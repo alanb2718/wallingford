@@ -1,4 +1,4 @@
-# wallingford 
+# wallingford
 
 Wallingford is an experimental DSL for handling state and updates,
 along with constraints, in Rosette.  It is intended as a stepping
