@@ -1,15 +1,24 @@
 #lang s-exp rosette
 ; geometric things in Wallingford/Rosette (also an example of handling state and change)
+(require racket/gui/base)
 (require "../core/wallingford.rkt")
 
 (provide point point? point-x point-y make-point point-plus point-scale
          line line? line-end1 line-end2 make-line 
+         circle circle? circle-center circle-radius make-circle
+         color colored-circle make-colored-circle colored-circle-color
          midpointline-line midpointline-midpoint make-midpointline make-midpointline-with-stays
          showthing)
 
-;; structs for points and lines
+; define color as a Rosette enum, so that we can put constraints on colors
+; the elements are strings rather than symbols since the Racket graphics library wants strings to look up color names
+(define-enum color '("red" "green" "blue" "black"))
+
+;; structs for geometric objects (including colored objects)
 (struct point (x y) #:transparent)
 (struct line (end1 end2) #:transparent)
+(struct circle (center radius) #:transparent)
+(struct colored-circle circle (color) #:transparent)
 (struct midpointline (line midpoint) #:transparent)
 
 ; functions to make symbolic objects
@@ -18,6 +27,13 @@
   (point x y))
 (define (make-line)
   (line (make-point) (make-point)))
+(define (make-circle)
+  (define-symbolic* r number?)
+  (circle (make-point) r))
+(define (make-colored-circle)
+  (define-symbolic* r number?)
+  (define-symbolic* c color?)
+  (colored-circle (make-point) r c))
 
 (define (make-midpointline)
   (define line1 (make-line))
@@ -40,11 +56,24 @@
 
 ; show function for all geometric types (oh for objects!!)
 (define (showthing g dc)
-  (cond ([point? g] (send dc draw-ellipse (point-x g) (point-y g) 5 5))
-        ([line? g] (send dc draw-line (point-x (line-end1 g)) (point-y (line-end1 g))
-                         (point-x (line-end2 g)) (point-y (line-end2 g))))
-        ([midpointline? g] (showthing (midpointline-line g) dc) (showthing (midpointline-midpoint g) dc))
-        (else (error "unknown type of thing to show"))))
+  (cond [(point? g) (send dc draw-ellipse (point-x g) (point-y g) 5 5)]
+        [(line? g) (send dc draw-line (point-x (line-end1 g)) (point-y (line-end1 g))
+                         (point-x (line-end2 g)) (point-y (line-end2 g)))]
+        [(colored-circle? g) (send dc set-brush (make-object color% "white") 'transparent)
+                             ; (send dc set-pen (make-object color% "blue") 2 'solid)
+                             ; (printf "color ~a \n" (label (colored-circle-color g)))
+                             (send dc set-pen (make-object color% (label (colored-circle-color g))) 2 'solid)
+                             (send dc draw-ellipse
+                                   (- (point-x (circle-center g)) (circle-radius g))
+                                   (- (point-y (circle-center g)) (circle-radius g))
+                                   (* 2 (circle-radius g)) (* 2 (circle-radius g)))]
+        [(circle? g) (send dc draw-ellipse
+                           (- (point-x (circle-center g)) (circle-radius g))
+                           (- (point-y (circle-center g)) (circle-radius g))
+                           (* 2 (circle-radius g)) (* 2 (circle-radius g)))]
+        [(midpointline? g) (showthing (midpointline-line g) dc) (showthing (midpointline-midpoint g) dc)]
+        [(null? g) #t]
+        [else (error "unknown type of thing to show" g)]))
 
 ;; utility functions to operate on points
 (define (point-plus p1 p2)

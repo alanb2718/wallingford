@@ -19,6 +19,24 @@
    (wally-solve)
    (check-equal? (evaluate x) 2)))
 
+(define (explicit-solution-test)
+  (test-case
+   "test that wally-solve is returning a solution to the required constraints"
+   (wally-clear)
+   (define-symbolic x number?)
+   (always (equal? x 2))
+   (let ([soln (wally-solve)])
+     (check-equal? (evaluate x soln) 2))))
+
+(define (explicit-soft-solution-test)
+  (test-case
+   "test that wally-solve is returning a solution to the soft constraints"
+   (wally-clear)
+   (define-symbolic x number?)
+   (always (equal? x 2) #:priority low)
+   (let ([soln (wally-solve)])
+     (check-equal? (evaluate x soln) 2))))
+
 (define (cn-priorities-test)
   (test-case
    "test always constraints with different priorities"
