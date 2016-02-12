@@ -74,7 +74,7 @@
          (set! button-down-locations (cons (point mx my) button-down-locations))
          ; revise when to wake up next if need be (could be wake up right now)
          ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
-         (cond [(not (set-empty? watchers)) (set-alert)])]
+         (cond [(not (set-empty? watchers)) (set-alert-helper)])]
         [(list 'milliseconds-syncd ch)
          (channel-put ch my-time)]
         [(list 'set-alert)
@@ -86,10 +86,6 @@
          (channel-put ch (thunk))]
         [_
          (error "thread message not understood: ~a\n" r)]))
-    
-    ; Methods to handle thread messages as ordinary methods
-    (define/public (set-alert)
-      (thread-send mythread '(set-alert)))
     
     (define/public (get-sampling)
       ; later: use an interface to avoid this
@@ -174,7 +170,7 @@
                               ; seconds-to-sleep might be negative, if clock time advanced beyond the target already
                               (cond [(> seconds-to-sleep 0.0) (sleep seconds-to-sleep)])
                               (send-syncd this advance-time-syncd target)
-                              (send this set-alert))))))
+                              (send-thing this set-alert))))))
     (define (terminate-old-alert) ; disable any existing alerts
       (cond [(not (null? alert))
              (kill-thread alert)
