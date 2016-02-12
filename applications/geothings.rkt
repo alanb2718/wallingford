@@ -3,10 +3,10 @@
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
 
-(provide point point? point-x point-y make-point point-plus point-scale
+(provide point point? point-x point-y make-point point-plus point-minus point-scale
          line line? line-end1 line-end2 make-line 
-         circle circle? circle-center circle-radius make-circle
-         color colored-circle make-colored-circle colored-circle-color
+         circle circle? circle-center circle-radius make-circle contains-point
+         color circle-color
          midpointline-line midpointline-midpoint make-midpointline make-midpointline-with-stays
          showthing)
 
@@ -17,8 +17,8 @@
 ;; structs for geometric objects (including colored objects)
 (struct point (x y) #:transparent)
 (struct line (end1 end2) #:transparent)
-(struct circle (center radius) #:transparent)
-(struct colored-circle circle (color) #:transparent)
+(struct circle (center radius color) #:transparent)
+; (struct colored-circle circle (color) #:transparent)
 (struct midpointline (line midpoint) #:transparent)
 
 ; functions to make symbolic objects
@@ -27,13 +27,19 @@
   (point x y))
 (define (make-line)
   (line (make-point) (make-point)))
-(define (make-circle)
-  (define-symbolic* r number?)
-  (circle (make-point) r))
-(define (make-colored-circle)
+
+; make-circle includes default values (if this works OK, add this to other functions as well)
+(define (make-circle [initial-value (circle (point 150 150) 50 (color "blue"))])
   (define-symbolic* r number?)
   (define-symbolic* c color?)
-  (colored-circle (make-point) r c))
+  (define circ (circle (make-point) r c))
+  ; give it a default value
+  (assert (equal? circ initial-value))
+  (stay (circle-radius circ))
+  (stay (circle-center circ))
+  (stay (circle-color circ))
+  (wally-solve)
+  circ)
 
 (define (make-midpointline)
   (define line1 (make-line))
@@ -55,28 +61,42 @@
   (midpointline line1 midpoint))
 
 ; show function for all geometric types (oh for objects!!)
+; unfortunately though objects aren't lifted in Rosette, so for now they remain structs
 (define (showthing g dc)
   (cond [(point? g) (send dc draw-ellipse (point-x g) (point-y g) 5 5)]
         [(line? g) (send dc draw-line (point-x (line-end1 g)) (point-y (line-end1 g))
                          (point-x (line-end2 g)) (point-y (line-end2 g)))]
-        [(colored-circle? g) (send dc set-brush (make-object color% "white") 'transparent)
-                             ; (send dc set-pen (make-object color% "blue") 2 'solid)
-                             ; (printf "color ~a \n" (label (colored-circle-color g)))
-                             (send dc set-pen (make-object color% (label (colored-circle-color g))) 2 'solid)
-                             (send dc draw-ellipse
-                                   (- (point-x (circle-center g)) (circle-radius g))
-                                   (- (point-y (circle-center g)) (circle-radius g))
-                                   (* 2 (circle-radius g)) (* 2 (circle-radius g)))]
-        [(circle? g) (send dc draw-ellipse
+        [(circle? g) (send dc set-brush (make-object color% (label (circle-color g))) 'solid)
+                     ; (send dc set-pen (make-object color% "blue") 2 'solid)
+                     ; (printf "color ~a \n" (label (colored-circle-color g)))
+                     (send dc set-pen (make-object color% (label (circle-color g))) 2 'solid)
+                     (send dc draw-ellipse
                            (- (point-x (circle-center g)) (circle-radius g))
                            (- (point-y (circle-center g)) (circle-radius g))
                            (* 2 (circle-radius g)) (* 2 (circle-radius g)))]
+;        [(circle? g) (send dc draw-ellipse
+;                           (- (point-x (circle-center g)) (circle-radius g))
+;                           (- (point-y (circle-center g)) (circle-radius g))
+;                           (* 2 (circle-radius g)) (* 2 (circle-radius g)))]
         [(midpointline? g) (showthing (midpointline-line g) dc) (showthing (midpointline-midpoint g) dc)]
+        ; compound graphical things are represented as lists.  The first thing should be on top,
+        ; so reverse the list to show
         [(null? g) #t]
+        [(pair? g) (for ([thing (reverse g)]) (showthing thing dc))]
+        [(box? g) (showthing (unbox g) dc)]
         [else (error "unknown type of thing to show" g)]))
+
+(define (contains-point thing pt)
+  (cond [(circle? thing)
+         (let ([x (- (point-x (circle-center thing)) (point-x pt))]
+               [y (- (point-y (circle-center thing)) (point-y pt))]
+               [r (circle-radius thing)])
+           (<= (+ (* x x) (* y y)) (* r r)))]))
 
 ;; utility functions to operate on points
 (define (point-plus p1 p2)
   (point (+ (point-x p1) (point-x p2)) (+ (point-y p1) (point-y p2))))
+(define (point-minus p1 p2)
+  (point (- (point-x p1) (point-x p2)) (- (point-y p1) (point-y p2))))
 (define (point-scale p1 s)
   (point (* (point-x p1) s) (* (point-y p1) s)))

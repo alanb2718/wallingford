@@ -4,7 +4,7 @@
 ; set debug to #t to print debugging information
 (define debug #f)
 
-(provide always always* stay wally-clear wally-solve wally-solve+
+(provide always always* stay wally-clear wally-solve wally-solve+ always*-code
          required high medium low lowest
          ;; temporarily expose these lists for debugging - remove this later
  required-constraints  required-constraint-procs  soft-constraints  soft-constraint-procs   required-stays   soft-stays)
@@ -39,6 +39,9 @@
 (define soft-constraint-procs '())
 (define required-stays '())   ; not sure why you'd want a required stay, but for consistency here it is!
 (define soft-stays '())
+; always*-code is just a list consisting of all of the code for the always* constraints
+; (used by reactive-thing% to decide whether there are temporal constraints)
+(define always*-code '())
 
 ; clear the lists of always constraints and stays, as well as the global assertion store
 (define (wally-clear)
@@ -48,6 +51,7 @@
   (set! soft-constraint-procs '())
   (set! required-stays '())
   (set! soft-stays '())
+  (set! always*-code '())
   (clear-asserts))
 
 ; functions to add an always constraint or a stay
@@ -59,8 +63,13 @@
 ; dynamic version of always (supports re-evaluating the expression each time by wrapping it in a lambda)
 (define-syntax always*
   (syntax-rules ()
-    ((always* e1) (set! required-constraint-procs (cons (lambda () e1) required-constraint-procs)))
-    ((always* e1 #:priority p) (set! soft-constraint-procs (cons (soft (lambda () e1) p) soft-constraint-procs)))))
+    ((always* e1) (add-always*-helper 'e1 (lambda () e1) #t))
+    ((always* e1 #:priority p) (add-always*-helper 'e1 (soft (lambda () e1) p) #f))))
+(define (add-always*-helper expr fn required?)
+  (if required? 
+      (set! required-constraint-procs (cons fn required-constraint-procs))
+      (set! soft-constraint-procs (cons fn soft-constraint-procs)))
+  (set! always*-code (cons expr always*-code)))
 
 (define (stay obj #:priority [p lowest])
   (if (= p required)

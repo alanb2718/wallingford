@@ -1,0 +1,735 @@
+% position paper for CROW workshop 2016
+
+% This is "sig-alternate.tex" V2.1 April 2013
+% This file should be compiled with V2.5 of "sig-alternate.cls" May 2012
+%
+% This example file demonstrates the use of the 'sig-alternate.cls'
+% V2.5 LaTeX2e document class file. It is for those submitting
+% articles to ACM Conference Proceedings WHO DO NOT WISH TO
+% STRICTLY ADHERE TO THE SIGS (PUBS-BOARD-ENDORSED) STYLE.
+% The 'sig-alternate.cls' file will produce a similar-looking,
+% albeit, 'tighter' paper resulting in, invariably, fewer pages.
+%
+% ----------------------------------------------------------------------------------------------------------------
+% This .tex file (and associated .cls V2.5) produces:
+%       1) The Permission Statement
+%       2) The Conference (location) Info information
+%       3) The Copyright Line with ACM data
+%       4) NO page numbers
+%
+% as against the acm_proc_article-sp.cls file which
+% DOES NOT produce 1) thru' 3) above.
+%
+% Using 'sig-alternate.cls' you have control, however, from within
+% the source .tex file, over both the CopyrightYear
+% (defaulted to 200X) and the ACM Copyright Data
+% (defaulted to X-XXXXX-XX-X/XX/XX).
+% e.g.
+% \CopyrightYear{2007} will cause 2007 to appear in the copyright line.
+% \crdata{0-12345-67-8/90/12} will cause 0-12345-67-8/90/12 to appear in the copyright line.
+%
+% ---------------------------------------------------------------------------------------------------------------
+% This .tex source is an example which *does* use
+% the .bib file (from which the .bbl file % is produced).
+% REMEMBER HOWEVER: After having produced the .bbl file,
+% and prior to final submission, you *NEED* to 'insert'
+% your .bbl file into your source .tex file so as to provide
+% ONE 'self-contained' source file.
+%
+% ================= IF YOU HAVE QUESTIONS =======================
+% Questions regarding the SIGS styles, SIGS policies and
+% procedures, Conferences etc. should be sent to
+% Adrienne Griscti (griscti@acm.org)
+%
+% Technical questions _only_ to
+% Gerald Murray (murray@hq.acm.org)
+% ===============================================================
+%
+% For tracking purposes - this is V2.0 - May 2012
+
+\documentclass{sig-alternate-05-2015}
+
+\begin{document}
+
+\sloppy
+
+% Copyright
+% \setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+
+% DOI
+\doi{10.475/123_4}
+
+% ISBN
+\isbn{123-4567-24-567/08/06}
+
+%Conference
+\conferenceinfo{Draft -- submitted to CROW Workshop, Modularity 2016,}
+{M\'{a}laga, Spain}
+
+% \acmPrice{\$15.00}
+
+%
+% --- Author Metadata here ---
+% \conferenceinfo{WOODSTOCK}{'97 El Paso, Texas USA}
+%\CopyrightYear{2007} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
+%\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
+% --- End of Author Metadata ---
+
+\title{Wallingford: Toward a Constraint \\  Reactive Programming Language}
+
+
+% You need the command \numberofauthors to handle the 'placement
+% and alignment' of the authors beneath the title.
+%
+% For aesthetic reasons, we recommend 'three authors at a time'
+% i.e. three 'name/affiliation blocks' be placed beneath the title.
+%
+% NOTE: You are NOT restricted in how many 'rows' of
+% "name/affiliations" may appear. We just ask that you restrict
+% the number of 'columns' to three.
+%
+% Because of the available 'opening page real-estate'
+% we ask you to refrain from putting more than six authors
+% (two rows with three columns) beneath the article title.
+% More than six makes the first-page appear very cluttered indeed.
+%
+% Use the \alignauthor commands to handle the names
+% and affiliations for an 'aesthetic maximum' of six authors.
+% Add names, affiliations, addresses for
+% the seventh etc. author(s) as the argument for the
+% \additionalauthors command.
+% These 'additional authors' will be output/set for you
+% without further effort on your part as the last section in
+% the body of your article BEFORE References or any Appendices.
+
+\numberofauthors{1} %  in this sample file, there are a *total*
+% of EIGHT authors. SIX appear on the 'first-page' (for formatting
+% reasons) and the remaining two appear in the \additionalauthors section.
+%
+\author{
+% You can go ahead and credit any number of authors here,
+% e.g. one 'row of three' or two rows (consisting of one row of three
+% and a second row of one, two or three).
+%
+% The command \alignauthor (no curly braces needed) should
+% precede each author name, affiliation/snail-mail address and
+% e-mail address. Additionally, tag each line of
+% affiliation/address with \affaddr, and tag the
+% e-mail address with \email.
+%
+% 1st. author
+\alignauthor
+Alan Borning \\
+\affaddr{Dept.\ of Computer Science \& Engineering}\\
+       \affaddr{University of Washington}\\
+       \affaddr{Seattle, Washington, USA}\\
+       \affaddr{and}\\
+       \affaddr{Communications Design Group}\\
+       \email{borning@cs.washington.edu}
+}
+% There's nothing stopping you putting the seventh, eighth, etc.
+% author on the opening page (as the 'third row') but we ask,
+% for aesthetic reasons that you place these 'additional authors'
+% in the \additional authors block, viz.
+
+\maketitle
+\begin{abstract}
+Wallingford is an experimental constraint reactive programming language
+that supports objects with state, persistent constraints on those objects,
+and reactive constraints that enable the system to respond to events by
+declaring constraints that become active when an event occurs, or while a
+condition holds.  It is implemented in Rosette, a solver-aided programming
+language and environment for constructing DSLs in turn implemented in
+Racket.  This short paper is a snapshot of work-in-progress on the system.
+\end{abstract}
+
+%
+% The code below should be generated by the tool at
+% http://dl.acm.org/ccs.cfm
+% Please copy and paste the code instead of the example below. 
+%
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10011007.10011006.10011008.10011009.10011015</concept_id>
+<concept_desc>Software and its engineering~Constraint and logic
+languages</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011008.10011009.10011011</concept_id>
+<concept_desc>Software and its engineering~Object oriented
+languages</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering~Constraint and logic languages}
+\ccsdesc[500]{Software and its engineering~Object oriented languages}
+
+\printccsdesc
+
+
+\keywords{Object constraint languages, reactive programming, Rosette}
+
+\section{Introduction}
+
+Wallingford is an experimental constraint reactive programming
+language, which integrate constraints with reactive programming, in a
+way that cleanly accommodates state and change, and that at the same
+time favors being declarative rather than imperative when feasible.
+The initial target applications are interactive graphical ones that
+use object-oriented features, and constraints to specify relations
+among the graphical elements and also how the application reacts to
+inputs.  The language draws on previous work on Babelsberg, a family of
+object constraint languages, and is implemented in Rosette, a
+solver-aided language that extends Racket (a Scheme dialect).
+
+This position paper is a snapshot of the work to date.  Section
+\ref{sec:related-work} discusses three key influences on the design of
+Wallingford, namely Babelsberg, Rosette, and the Fran functional reactive
+programming system.  Section \ref{sec:core-wallingford} describes a small
+set of functions and macros that extend Rosette for use in representing
+objects with state and persistent constraints, while Section
+\ref{sec:reactive} discusses adding reactive constraints.
+
+A prototype implementation of the core Wallingford system described in
+Section \ref{sec:core-wallingford} is complete and reasonable stable, and
+available in the repository
+\verb|https://github.com/cdglabs/wallingford.git|.  The additions to
+support reactive constraints (Section \ref{sec:reactive}) are being
+implemented, with some but not all being currently operational.  (If this
+position paper were accepted, this would be cleaned up in the final
+version, with everything up to the Future Work section describing only
+implemented and tested features.)  The current system supports some simple
+interactive demonstrations, but performance is explicitly not a goal
+at this time.  Rather, the goal is to work out a clean and expressive
+language; at the same time, the language should not include features that
+would make it impossible to develop much faster implementations later.
+
+\section{Related Work}
+\label{sec:related-work}
+
+Wallingford draws on a variety of programming language paradigms and
+approaches.  This section describes three: the Babelsberg family of
+object constraint languages, the Rosette solver-aided language, and
+the functional reactive animation system Fran.
+
+\subsection{Babelsberg}
+\label{sec:babelsberg}
+
+Babelsberg \cite{FelgentreffJOT14,felgentreff-oopsla-2015} is a family of
+object constraint languages that allows constraints to be integrated with
+an existing object-oriented language.  Current
+implementations are Babelsberg/Ruby, Babelsberg/Javascript, and
+Babelsberg/Squeak (Squeak being a Smalltalk dialect).
+
+Babelsberg enables the programmer to write constraints on objects that
+include OO constructs such as message sends and that respect object
+encapsulation.  For example, this constraint specifies that the center
+of a rectangle \verb|r| remain at a fixed position as its other
+attributes are updated.\footnote{The examples in this section are
+  written in pseudo-code, following the examples in 
+  \cite{felgentreff-step-by-step-tr}.}
+
+\begin{verbatim}
+always r.center() = Point(10,20)
+\end{verbatim}
+
+It doesn't matter whether \verb|center| is stored as a field of the
+rectangle or computed via a method; in either case, Babelsberg will
+evaluate the constraint expression in constraint construction mode to
+rewrite it into a set of primitive constraints that can then be turned over
+to the solver.
+
+A key aspect of Babelsberg is the handling of state, assignment, and object
+identity \cite{felgentreff-oopsla-2015}.  Babelsberg makes a distinction
+between instances of primitive types and of value classes, for which object
+identity is not significant and that don't need to be stored on the heap,
+and instances of classes for which identity is significant and that are
+stored on the heap.  Here is a simple example using just primitive types.
+
+\begin{verbatim}
+x := 3;
+y := x;
+always y=10;
+\end{verbatim}
+
+At the end of this fragment we have \verb|x=3| and \verb|y=10|.  \verb|x|
+and \verb|y| hold instances of a primitive type, and so even though we
+assign \verb|x| to \verb|y|, they are not aliased, and the \verb|always|
+constraint only affects \verb|y|.  In addition to explicit constraints
+(such as \verb|y=10| above), there are implicit soft stay constraints to
+give stability in the absence of other stronger constraints --- so after
+the initial assignment to \verb|x|, there is a low-priority stay constraint
+that it retain the value 3.  There is also a low-priority stay
+constraint on \verb|y| after the assignment \verb|y:=x|, but this stay is
+overridden by the required constraint \verb|y=10|.
+
+On the other hand, for ordinary objects that aren't primitive types or
+instances of value classes, object identity \emph{is} significant.  Aliases
+can be either implicitly created using an assignment statement, or by using
+explicit identity constraints.  Reference \cite{felgentreff-oopsla-2015}
+discusses Babelsberg's approach to taming the power of the constraint
+solver so that it can't on its own create new objects with object identity
+to satisfy constraints, add fields or methods to objects, or the like.
+
+Semantically, all the constraints are solved after each statement.  In
+implementations, however, Babelsberg uses various techniques to enable
+reasonable performance, such as keeping track of dependencies so that only
+constraints involving changed objects need be re-solved, and ``edit''
+constraints to take advantage of incremental solvers.
+
+\subsection{Rosette}
+\label{sec:rosette}
+
+Rosette \cite{torlak-onward-2013,torlak-pldi-2014} is a solver-aided 
+language that extends Racket \cite{racket} with
+symbolic data types and solver operations.  The motivation for using
+Rosette as an implementation platform for Wallingford are two-fold.  First,
+Rosette includes support for inferring constraints and programs from
+examples, and this capability will very likely be useful in the future for
+automatically inferring graphical constraints from example layouts.
+Second, it is an exciting and thought-provoking system, and I simply have
+an intuition that interesting results will flow from trying to meld it with
+the Babelsberg approach to objects and constraints.
+The Rosette system supports a variety of constraint solvers --- the
+Wallingford implementation uses Z3 \cite{demoura-z3-2008}.
+
+As a simple Rosette example, the following statements declare two symbolic
+variables and constraints on them, and then find a solution that satisfies
+these constraints:
+\begin{verbatim}
+  (define-symbolic x y number?)
+  (assert (equal? y (+ x 2)))
+  (assert (equal? y 10))
+  (solve #t)
+\end{verbatim}
+
+The previous example of a constraint on the center of a rectangle has
+the following analog in Rosette:
+\nopagebreak[3]
+\begin{verbatim}
+(assert (equal? (rect-center r) (point 10 20)))
+\end{verbatim}
+
+\pagebreak
+
+As with Babelsberg, the expression is evaluated in the host language, and
+\verb|(rect-center r)| will be partially evaluated away prior to reaching
+constructs known to Rosette.  
+%% The interpretation of the assertion can also
+%% change depending on the binding of (for example) \verb|rect_center|.
+However, the \verb|assert| statement just asserts the constraint at the
+time it is evaluated, unlike \verb|always| in Babelsberg that re-asserts
+the constraint at each time step.
+
+Such persistent constraints declared using \verb|always|, as well as
+the low-priority stay constraints, are not supported primitively in
+Rosette, but it is straightforward to add them in a DSL on top of
+Rosette, as described in the next section.
+
+An important difference between Babelsberg and Rosette concerns the
+handling of variables, state, and assignment for immutable types.  In
+Babelsberg, for a variable that refers to an immutable object, a weak stay
+constraint cause it to retain its value in the absence of an explicit
+assignment or stronger constraints.  The value itself is however immutable.
+Concrete values in Rosette are similar; but to make use of constraints,
+programmers declare symbolic constants.  They can then assert constraints
+on these symbolic constants and ask the solver for a satisfying solution.
+Programmers can also make aliases for these symbolic constants, or pass
+them to procedures and in those procedures put assertions on the symbolic
+constants.  In contrast, in Babelsberg, aliasing doesn't apply to instances
+of primitive types.  In Rosette, transparent immutable structures can hold
+symbolic constants, and so the same considerations apply to them as to
+symbolic constants themselves.  
+
+Thus, in Babelsberg, types without object identity are immutable ---
+constraints on variables and stay constraints are used to update the values
+as time progresses.  In Rosette, symbolic constants, and immutable
+transparent structures that contain them, form a kind of shell.  The
+programmer can clear all the assertions on them, or even make assertions
+that apply only within a particular call to \verb|solve|; but the structure
+persists independent of these assertions.
+%% A symbolic value (either of a
+%% primitive type or a struct) may have a binding in the current solution, but
+%% in another solution may have a different binding.
+This concept of symbolic
+values and different bindings does not exist in Babelsberg.  On the one
+hand, the Rosette approach bypasses the issues with taming the power of the
+constraint solver that arise in Babelsberg, since the solver just works on
+the leaves (symbolic numbers, booleans, etc), and not on user-defined
+structures.  On the other hand, the situation with ordinary objects in
+Babelsberg, and mutable or opaque structs in Rosette, is much closer.  In
+both systems, the solver can't make new objects or spontaneously change the
+object to which a variable refers to satisfy constraints.
+
+
+%%% LONG VERSION:
+
+%% Object identity is handled in a similar manner in the two systems.  In both
+%% systems, object identity is not relevant for primitive types, nor for
+%% transparent immutable structures (in Rosette) or instances of value classes
+%% (in Babelsberg).  Object identity is significant for opaque or mutable
+%% structures (in Rosette) and for instances of mutable records or ordinary
+%% classes (in Babelsberg).  
+
+%% An important difference concerns how variables, state, and assignment are
+%% handled, particularly for primitive types and instances of value
+%% classes/transparent immutable structures.  In Babelsberg, programmers can
+%% put constraints on the variable that must be satisfied for required
+%% constraints, or that should be satisfied if possible for soft constraints.
+%% Weak stay constraints cause variables to retain their values in the absence
+%% of an explicit assignment or stronger constraints.  Concrete values in
+%% Rosette are similar; but to make use of constraints, programmers declare
+%% symbolic constants.  They can then assert constraints on these symbolic
+%% constants and ask the solver for a satisfying solution.  Programmers can
+%% also make aliases for these symbolic constants, or pass them to procedures
+%% and in those procedures put assertions on the symbolic constants.  In
+%% contrast, in Babelsberg, aliasing doesn't apply to instances of primitive
+%% types.
+
+%% Instances of user-defined value classes in Babelsberg are also
+%% immutable and can be passed freely to procedures or methods without
+%% the possibility of assigning to them or constraining them in the
+%% procedure.  In Rosette, transparent immutable structures can hold
+%% symbolic constants, and so the same considerations apply to them as to
+%% symbolic constants themselves.  Thus, in Babelsberg, primitives and
+%% other types without object identity are immutable --- constraints on
+%% variables and stay constraints are used to update the values as time
+%% progresses.  In Rosette, symbolic constants, and immutable transparent
+%% structures that contain them, form a kind of shell.  The programmer
+%% can clear all the assertions on them, or even make assertions that
+%% apply only within a particular call to \verb|solve|; but the structure
+%% persists independent of these assertions.  A symbolic value (either of
+%% a primitive type or a struct) may have a binding in the current
+%% solution, but in another solution may have a different binding.  This
+%% concept of symbolic values and different bindings does not exist in
+%% Babelsberg.  On the one hand, the Rosette approach bypasses the issues
+%% with taming the power of the constraint solver that arise in
+%% Babelsberg, since the solver just works on the leaves (symbolic
+%% numbers, booleans, etc), and not on user-defined structures.  On the
+%% other hand, the situation with ordinary objects in Babelsberg, and
+%% mutable or opaque structs in Rosette, is much closer.  In both
+%% systems, the solver can't make new objects or spontaneously change the
+%% object to which a variable refers to satisfy constraints.
+
+\subsection{Fran}
+
+There has been substantial work on reactive programming languages and
+frameworks --- see reference \cite{bainomugisha-computing-surveys-2012} for
+a useful survey.  An early and influential system is Fran by Conal Elliott
+and Paul Hudak \cite{elliot-icfp-1997}, and it has been an important
+inspiration for the work on adding reactive constraints (Section
+\ref{sec:reactive}).  Fran provides an integrated set of data types and
+functions in the Haskell language designed for writing animations, in
+particular \emph{behaviors} and \emph{events}.  As is implied by being
+written in Haskell, it is a purely functional system, and graphical
+elements and other behaviors are implicitly functions of time rather than
+having state that changes with time.  Semantically, in Fran time is
+continuous (rather than discrete as is more typically the case).
+\emph{Interval analysis} \cite{snyder-siggraph-1992} is used to perform
+event detection.
+
+\pagebreak
+
+\section{The Core Wallingford System}
+\label{sec:core-wallingford}
+
+The core Wallingford system includes a small set of functions and macros to
+extend Rosette for use in constructing interactive graphical applications,
+as well as other applications involving objects with state and persistent
+constraints.  The code for this is in the \verb|wallingford/core|
+subdirectory of the git repository.  The key features provided by the core
+system are facilities for building objects with persistent constraints,
+such as constrained geometric objects, GUI widgets with constraints, or
+simulation elements; and for implementing frame axioms (specifying that
+things remain the same unless there is some reason they should change).
+
+Soft constraints as well as hard (required) ones are useful for both of
+these features.  In particular, the frame axioms are implemented using
+low-priority ``stay'' constraints that instruct the solver to leave the
+value of a variable as it was, unless forced to change by some stronger
+constraint.  These features are implemented by the following functions and
+macros.
+
+\begin{description}
+
+\item[{\tt always}] This function takes a constraint and an optional
+  priority, and adds that constraint to the set of constraints that will be
+  enforced thereafter.  The priority defaults to {\tt required}.  For
+  example, here is a constraint to keep a midpoint halfway between the two
+  endpoints of a line:
+
+\begin{verbatim}
+(always (equal? midpoint 
+  (point-times 0.5
+    (point-plus (line-end1 line1)
+                (line-end2 line1))))
+\end{verbatim}
+
+\item[{\tt always*}] This macro provides similar functionality to
+  \verb|always|, except that the expression is re-evaluated at each
+  step, so that the constraint applies to the new bindings of
+  variables if they are re-assigned.
+
+\item[{\tt stay}] This function takes an expression and a priority (which
+  defaults to ``lowest''), and adds a stay constraint to the system that
+  the value of the expression stay the same each iteration.  For example,
+  this constraint tells the system that one of the endpoints of a line
+  should not move unless necessary, with low priority:
+
+  \begin{verbatim}
+  (stay (line-end1 line1) #:priority low)
+  \end{verbatim}
+
+\item[{\tt wally-clear}]  This function cleans out all of the constraints
+  and stays.
+
+\item[{\tt wally-solve}] This function is similar to Rosette's {\tt solve}
+  macro, augmented with features to support Wallingford.  It finds and
+  returns a solution to the global assertion store plus all constraints
+  declared using \verb|always| and \verb|stay|.  Stay constraints are
+  considered relative to the current state of the system.  The solution
+  returned from {\tt wally-solve} can then be used to evaluate an
+  expression involving symbolic variables to find a concrete value.  The
+  system uses iterative deepening to find a solution to the constraints
+  that satisfies as many of the soft constraints as possible, respecting
+  their relative priorities.  (Using the terminology of
+  \cite{borning-lisp-symbolic-computation-1992}, specifically it finds a
+  unsatisfied-count-better solution.)
+
+\end{description}
+
+The \verb|wallingford/applications| directory has a few examples of using
+these functions and macros.  \verb|geothings.rkt| contains some definitions
+of simple geometric objects with constraints. \verb|quadrilateral.rkt| uses
+these to define an interactive demo that lets the user drag the endpoints
+of lines that form a quadrilateral with an embedded parallelogram.
+\verb|electrical-things.rkt| and \verb|electrical-things-dynamic.rkt| have
+two styles of defining electrical circuit components; the unit tests in the
+\verb|wallingford/tests| directory wire up some circuits using them.
+
+\section{Adding Reactive Constraints}
+\label{sec:reactive}
+
+This section describes work in progress on adding temporal constraints and
+reactivity to Wallingford.  Many of the examples and features are inspired
+by Fran \cite{elliot-icfp-1997}, although, as a language with state, in
+many ways it is not at all like Fran.  While the current design is being
+developed using Rosette and the framework presented in the previous
+section, the same ideas could be used in other constraint languages as
+well.
+
+Reactivity is encapsulated in instances of a class \verb|reactive-thing|.
+Each reactive thing has its own internal time --- the plan is for time to
+be continuous, as in Fran, but in the current implementation it is an
+integer (milliseconds since system start time), due to Rosette
+limitations.\footnote{This limitation should be removed within the next few
+  months.  Z3 itself does provide real numbers, so this is a matter of
+  making this functionality available in Rosette.  Note that these are
+  mathematical reals, not floats.  (Again, the goal at this point is
+  getting a clean and expressive language, rather than performance ---
+  there will be many opportunities for optimization later.)}
+
+Reactive things have a default image, and we can set up a \emph{viewer}
+that periodically samples the state of the reactive thing and displays it.
+This sampling can be done either on a pull or a push basis --- the
+semantics are that of pulling (i.e., periodic polling) --- push
+notification is intended to be entirely an optimization that doesn't change
+the semantics.
+
+Constraints on reactive things can reference the thing's current time,
+making them temporally dependent.  For example, we can create a reactive
+thing that includes a blue circle \verb|c| as its image, and make the
+circle smoothly change size as a function of time:
+
+\begin{verbatim}
+(always* (equal? (circle-radius c)
+                 (+ 60 (* 50 (sin (seconds))))))
+\end{verbatim}
+
+In this case, there is a pure ``pull'' relationship between the viewer and
+the viewed thing --- viewer polls the viewed thing as often as need be to
+get a smooth animation.  (In the current implementation, this example runs
+with some jerkiness, since the system is actually calling Z3, as an
+separate process, to solve the constraint on each refresh.)  To do this,
+the viewer sends the reactive thing a message \verb|advance-time| with a
+proposed new time $t$ as an argument.  The reactive thing responds by
+advancing its internal clock appropriately; and then its image can be
+retrieved and shown using the new time $t$\@.  Semantically, the viewed
+thing takes on all of the times between its current time and $t$, but since
+there are no detectable effects of taking on all the intermediate states,
+the thing's internal time can simply jump to $t$.
+
+Conditionally asserted constraints are supported using \verb|when| and
+\verb|while| macros.
+
+\begin{description}
+    
+\item[when] takes a boolean-valued expression and asserts a set of
+  constraints at the instant that event occurs.
+
+\item[while] similarly takes a boolean-valued expression, and asserts a set
+  of constraints that should hold as long as the condition has the value
+  true.
+
+%% \item[integral] \verb|(integral f t0)| is the definite integral
+%%   $\int_{t_0}^t f \, dt$, where $f$ is some expression, $t_0$ is a start
+%%   time and $t$ is the current time.
+
+%% \item[detect] takes a boolean-valued expression and returns an event
+%%   that is true at the instant the value of the expression changes to
+%%   true.
+
+\end{description}
+
+Both \verb|when| and \verb|while| have a boolean-valued expression as their
+conditions, but for \verb|when| the expression is restricted to denoting an
+\emph{event} that is true just for an instant.\footnote{We can formalize
+  this restriction as follows.  For any time $t$ such that the condition
+  $c$ of the {\tt when} has the value true, there exists some $\delta>0$
+  such that $c$ is false for all other times in the interval
+  $[t-\delta,t+\delta]$.}  The default duration for a \verb|while| or
+\verb|when| macro is \verb|always|: it should hold from that point onward.
+These macros also allow for an \verb|until| clause with an event-valued
+expression, which specifies that the \verb|while| or \verb|when| should be
+deactivated if the event occurs.
+
+For example, we can add a \verb|when| temporal constraint to our 
+circle to make it flip between blue and red every 5 seconds:
+
+\begin{verbatim}
+(define (flip c)
+  (if (equal? c (color "blue"))
+      (color "red")
+      (color "blue")))
+
+(when (zero? (remainder (milliseconds) 5000))
+  ((equal? (colored-circle-color c) 
+    (flip (previous (colored-circle-color c))))))
+\end{verbatim}
+
+If a reactive thing includes \verb|when| or \verb|while| temporal
+constraints, handling the \verb|advance-time| message is more complex,
+since a \verb|when| or \verb|while| condition might be true at some
+time between its current time and the new proposed time.  Even in the
+current implementation, in which time is represented as an integer, it
+would be quite inefficient to methodically advance time 1 millisecond
+per tick, checking each tick for conditions that have become true; and
+impossible when the implementation is rewritten to use real-valued
+time.  Instead, the system uses its constraint solving capabilities to
+find the next time to which to advance.  Let the reactive thing's
+current time be $r$, and the new proposed time be $t$\@.  The system
+then solves for a time $s$ such that $r<s<t$, all of the required
+constraints hold, and at least one condition in a \verb|when| or
+\verb|while| statement holds.  If no such time exists, the reactive
+thing can safely advance its time to $t$\@.  But if such a time $s$
+does exist, the system uses iterative deepening to find the minimum
+such time $s_{\min}$, and the thing advances its clock to $s_{\min}$.
+It then uses \verb|wally-solve| to solve the constraints at $s_{\min}$
+(including the soft constraints), asserts the constraints in the
+bodies of all \verb|when| or \verb|while| statements whose condition
+holds at $s_{\min}$ (for a \verb|when|, just at that instant, and for
+a \verb|while|, as long as the condition holds --- like a bounded
+version of \verb|always|), and finally calls \verb|wally-solve| again.
+Finally, if there were such a time $s_{\min}<t$, the reactive thing
+calls \verb|advance-time| again to attempt to advance its time to $t$\@.
+(It might need to advance to multiple intermediate times before
+eventually getting to $t$.)
+
+The function \verb|previous| used above denotes the value of the circle's
+color at some time $p$ less than the current time and greater than any
+other time that the thing's state has been accessed.  (Thus,
+\verb|previous| can only be used in a \verb|when| constraint --- it doesn't
+make sense in a \verb|while|.)
+
+Incidentally, the condition in the above \verb|when| takes advantage of
+milliseconds being an integer --- when this is converted to use reals, the
+condition would need to also include a test
+\verb|(integer (milliseconds))|.
+
+External events can also be accommodated in this framework.  For example,
+the function \verb|left-button-pressed| returns true just at those
+instants that the button is pressed.  (Note that this is not the same as
+\verb|left-button-down|, which returns true throughout the interval
+the button is down --- the ``pressed'' function returns true just at one
+instant.)  We can then use such functions in \verb|when| conditions, for
+example to flip the color when the button is pressed:
+
+\begin{verbatim}
+(when (left-button-pressed)
+  ((equal? (colored-circle-color c) 
+    (flip (previous (colored-circle-color c))))))
+\end{verbatim}
+
+If the reactive thing is monitoring the button state, then it maintains a
+set of times that the button is pressed; and when advancing time, we need
+to advance to the first time such that a condition on a \verb|when| or
+\verb|while| is true, including ones involving these external events.  For
+example, suppose that a reactive thing \verb|r| includes the above
+constraint, and there is a button press at time 2000 (milliseconds).  If
+\verb|r| gets an \verb|advance-time| message asking it to advance to 1000,
+it can simply do so.  On the other hand, if it is asked to advance time to
+3000, then that method will find that the \verb|when| condition on the flip
+constraint is satisfied at some earlier time, so it will just advance to
+2000 instead.  The constraints in the body of the \verb|when| will be
+satisfied, and it will try again to advance to 3000, and assuming there is
+no intervening button press, it can do so.
+
+In the current implementation, accumulating button press events is done
+using push notifications, and all other viewing is done using pull
+sampling.  Later, though, we can optimize this by also using push in cases
+where the thing's image is static and changes only at the point a
+\verb|when| condition becomes true.
+
+TODO: fix above description to either just be about 'when', or discuss how
+'while' is handled.  For 'while', what we care about is if the condition
+changes truth value during the proposed time advance.
+
+
+\section{Future Work}
+
+This short paper is a snapshot of work-in-progress.  The next steps are to
+complete the prototype implementation of the reactive programming
+constructs, and to test them on a representative set of interactive
+applications.  Two additional temporal constraints are also planned:
+\verb|(integral f)|, which denotes the definite integral 
+$\int_{t_0}^t f \, dt$ for an expression $f$, where $t_0$ is the time
+at which the integral constraint is asserted and $t$ is the current
+time (modeled after an analogous construct in Fran); and
+\verb|(detect expr)|, which takes a boolean-valued expression and
+returns an event that is true at each instant the value of \verb|expr|
+changes to true.
+
+Following that, getting reasonable performance, through compilation and
+other techniques, will be essential.  Other future work will include
+developing a more formal semantics for the temporal constraints, using
+Rosette's capabilities to support inferring constraints from examples, and
+perhaps working out how Wallingford could function in a distributed system
+with multiple clocks.
+
+\subsection*{Acknowledgments}
+Many thanks to colleagues in UW Computer Science \& Engineering and in
+the Communications Design Group for useful feedback on this work.  This
+research was funded in part by SAP and Viewpoints Research Institute.
+
+\newpage
+
+\bibliographystyle{plain}
+\bibliography{constraints}
+
+\end{document}
+
+%%  LocalWords:  rightsretained Modularity '16 ' laga Wallingford Borning
+%%  LocalWords:  DSLs ccs2012 desc Babelsberg Javascript Smalltalk OO Z3
+%%  LocalWords:  Babelsberg's DSL struct booleans structs Conal Hudak UW
+%%  LocalWords:  subdirectory reactivity boolean Javascript

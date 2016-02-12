@@ -1,0 +1,626 @@
+\documentclass{article}
+\setlength{\topmargin}{-0.25 in}
+\setlength{\textwidth}{6.5in}
+\setlength{\textheight}{8.5 in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+\setlength{\parindent}{0.0in}
+\setlength{\parskip}{7pt plus 1pt}
+
+\usepackage{url}
+
+\sloppy
+
+\begin{document}
+
+\title{Toward a Constraint Reactive Programming Language}
+\author{Alan Borning}
+\date{\today}
+
+\maketitle
+
+\section{Introduction}
+
+This note outlines a constraint reactive programming language that
+extends Wallingford with temporal constraints and reactivity.  Many of
+the examples and features are inspired by Fran \cite{elliot-icfp-1997},
+although, as an imperative language, in many ways it is not at all
+like Fran.  The language uses a hybrid automata approach, loosely
+modeled on that described in \cite{alur-lncs-1993}.
+
+The examples in this note don't run yet --- they are just to explore
+the language.
+
+The basic intuition is that we are modeling or simulating a continuous
+system (or better, a set of interacting continuous systems) on a
+discrete digital computer.\footnote{Eventually we might extend this
+  model to include actual physical systems with sensors and
+  actuators.}  An application consists of one or more interacting
+processes.  Each process has a continuously varying clock, and also a
+program counter, which ranges over a set of control locations.  The
+state of each process can change continuously with time, as specified
+by the currently active set of constraints.  The processes can also be
+reactive --- when some event occurs, or a condition changes its truth
+value, the system can transition to a new state.  This might involve
+adding or removing constraints, and also assigning to variables.
+
+The current time in any process can be referenced using the distinguished
+variable \verb|time|.  In the examples that follow I'll assume lexical
+scoping and a default process, so that \verb|time| can be simply
+referenced.  \verb|time| is guaranteed to increase monotonically, but not
+at a particular rate relative to wall clock time.  For decent animations,
+though, it should increase at a fixed rate, at least approximately.  Its
+type is just real.  (At one point in the design there was a separate type
+Continuous, but this is now dropped.)  There is also a predefined process
+named \verb|system|, whose clock is the hardware clock, and that also can
+be queried for the state of input devices.  Another predefined process is
+\verb|display|, for output.  The display process takes care of sampling at
+an appropriate rate to produce smooth animations and interactions if
+possible.
+
+In Fran, the abstract domain \emph{Time} has some non-standard features,
+since we want to be able to know that a given time is at least some
+value, even though we don't know yet exactly what that final value will be.
+So in Fran, we can have a specific time (for example 100), and also a time
+that is at least 42, written $_{\geq} 42$.  These issues have been ignored
+for the moment in Wallingford, but we need to return to this and decide
+whether to adopt a seminar semantics.
+
+A simpler starting point for the design may be to just have one process
+initially, and later figure out multiple interacting processes.  For now,
+though, this note uses multiple interacting processes.
+
+An event is a boolean-valued variable that denotes that something
+happened at a particular instant.  (Again, at one point in the design
+there was a separate type Event, but this is also dropped in favor of
+the type just being boolean.)  An event models some discrete
+occurrence --- there will be only a finite number of instants in which
+the value of the event variable is true in any given time interval.
+(If we define another variable V whose value is 0 or 1 depending on
+whether the event variable is false or true, the integral of V over
+any finite time interval will be 0.  Not sure about infinite
+intervals, but it probably doesn't matter.  Hopefully someone who is
+better at theory than me can clean this up.)
+
+An important concept is that of \emph{observing} or \emph{sampling}.
+Semantically, time varies continuously, but we can only observe or
+sample the state of a process at discrete times.  By defining appropriate
+events in the process being observed (using `when' --- see below), we can
+avoid missing important states, such as things that might be true just for
+an instant.
+
+The language includes the following new macros, in addition to the
+functions and macros in the current Wallingford implementation.  (The
+existing ones are \verb|always|, \verb|always*|, \verb|stay|,
+\verb|wally-clear|, \verb|wally-solve|, and \verb|wally-solve+|.)
+
+\begin{description}
+    
+\item[when] takes an event-valued expression and evaluates some
+  statements at the instant that event occurs.  These can include
+  assignments and assertions of new constraints.  (Note that this is not
+  the same as the built-in \verb|when| control structure in Racket ---
+  for a prototype implementation, we could call this \verb|wallywhen|.)
+
+\item[while] asserts a set of constraints that should hold as long as
+  the condition has the value true.
+
+\item[integral] \verb|(integral f t0)| is the definite integral
+  $\int_{t_0}^t f \, dt$, where $f$ is some expression, $t_0$ is a start
+  time and $t$ is the current time.
+
+\item[derivative] \verb|(derivative e)| evaluates to the derivative of
+  \verb|e| with respect to the current time.
+
+\item[detect] takes a boolean-valued expression and returns an event
+  that is true at the instant the value of the expression changes to
+  true.
+
+\end{description}
+
+The default duration for a \verb|while| or \verb|when| macro is always: it
+should hold from that point onward.  These macros also allow for an
+\verb|until| clause with an event-valued expression, which specifies that
+the \verb|while| or \verb|when| should be deactivated if the event occurs.
+Ordinary constraints can still have the {\tt always} and {\tt once}
+annotations as in the current Wallingford, and ordinary constraints can
+also use the \verb|until| annotation instead.  (However, \verb|once|
+doesn't make sense for \verb|while| or \verb|when| --- an equivalent
+\verb|if| statement would be simpler and clearer and give the same result.)
+
+We'll use objects and messages for processes.  So we can query for the
+system time or state of the mouse as follows:
+\begin{verbatim}
+  (send system time)
+  (send system left-button-down) 
+  (send system left-button-down-event)
+\end{verbatim}
+
+The \verb|left-button-down| message returns true if the button is down at
+that time.  The \verb|left-button-down-event| returns true just at the
+instant the button is pressed; otherwise it is false.
+
+\subsection{Relation to Fran}
+
+Fran is embedded in Haskell, and as such is a functional language.  In
+Fran, behaviors are functions of time.  The time parameter is implicit ---
+the system takes care of supplying it to get the value of the behavior
+(i.e.\ function) when it is needed.  There is no state; we can evaluate a
+behavior on many different times without any interference among them.  In
+Wallingford, on the other hand, the value of an expression can vary with
+time.
+
+\section{Examples and Discussion}
+
+This section includes a discussion of some of the new features, along with
+a series of examples, mostly adapted from the Fran paper
+\cite{elliot-icfp-1997}.
+
+\subsection{Basic Graphical Objects}
+\label{sec:basic-graphics}
+
+Regarding how graphical objects are constructed, Fran starts with a
+constant unit circle as well as other geometric constants, and computes new
+values by transforming these existing values.  (Since it's purely
+functional, we can only make new values and not alter existing ones.)
+While we could do that in Wallingford, we instead take a more stateful
+approach, using either a struct or a class \verb|Circle|.  We constrain its
+size relative to \verb|time|, so that it smoothly grows and shrinks.
+
+%% \begin{verbatim}
+%% c := Circle.new();
+%% c.center := point(10,20);
+%% /* this causes the circle to keep growing and shrinking */
+%% always c.radius = 100 + 100*sin(system.time)
+%% \end{verbatim}
+
+First, here is a version that uses a \verb|circle| struct.  There is a
+function \verb|make-circle| that returns an instance of this struct, with
+the center a symbolic point and the radius a symbolic number.
+
+\begin{verbatim}
+(struct point (x y) #:transparent)
+(struct circle (center radius color) #:transparent)
+
+(define (make-point)
+  (define-symbolic* x y number?)
+  (point x y))
+
+; This version takes an initial center and radius for the circle (the
+; center and radius themselves are symbolic quantities).  The color is just
+; fixed however.
+(define (make-circle initial-center initial-radius [color 'black])
+  (define c (make-point))
+  (define-symbolic* r number?)
+  (assert (equal? c initial-center))
+  (assert (equal? r initial-radius))
+  (wally-solve)
+  (circle c r color))
+
+(define c (make-circle (point 100 200) 0))
+(always (equal? (circle-radius c) (+ 100 (* 100 (sin time)))))
+(wally-solve)
+\end{verbatim}
+
+We've made the constraint on the radius an \verb|always| constraint;
+as a result the radius will continue to track time indefinitely.  (In
+the implementation, if nobody can possibly see or access the circle
+any more, it could be garbage collected.)  An alternative would be to
+use an \verb|until| clause to specify a condition for removing that
+constraint.
+
+There is an external \verb|display| process (not shown) that samples
+the circle's state to produce a smooth animation of it growing and
+shrinking.
+
+Here is an alternate version that uses a class.
+
+\begin{verbatim}
+(define c (new circle% [center (new point% 100 200)] [radius 100]))
+(always (equal? (send c radius) (+ 100 (* 100 (sin time)))))
+(wally-solve)
+\end{verbatim}
+
+From now on, we will just use structs for user-defined compound data,
+but these could just as easily be classes and real objects, assuming
+there isn't an issue with classes and Rosette.  (Structs are lifted in
+Rosette, but the object-oriented facilities in Racket are not.)
+
+\subsection{Using Events}
+
+%% Babelsberg version:
+%% \begin{verbatim}
+%% always at5 = (system.time^2 = 5)
+%% \end{verbatim}
+
+An event in Fran represents the fact that something happened at a
+given time.  In the formal semantics, the semantic function {\bf occ}
+maps an event to a pair $(\emph{Time},\alpha)$.  It is non-strict.
+I'm still confused about this aspect of Fran, so this may not be
+entirely correct.  Pressing on despite this confusion, in Wallingford
+events are represented as boolean-valued variables that
+instantaneously have the value true at given times; at all other times
+they have the value false.
+
+The Fran paper includes a number of examples of events.  One is
+\verb|(predicate (time^2) == 5) t0|.  In Wallingford we could
+define an analogous variable \verb|at5| as follows:
+
+\begin{verbatim}
+(define-symbolic at5 boolean?)
+(always (equal? at5 (equal? (expt time 2) 5)))
+\end{verbatim}
+
+\verb|at5| is a boolean-valued variable that represents an event.  It
+will be true for the instant when the system time squared is exactly
+5, and otherwise false.  (We'll deal with roundoff errors and such as
+part of the implementation of interval analysis --- for now let's view
+numeric variables as real-valued, not float-valued.)
+
+%% Babelsberg version:
+%% \begin{verbatim}
+%% e1 = first(system.leftButtonPressedEvent, system.time, t0)
+%% \end{verbatim}
+
+%% \begin{verbatim}
+%% def flip(c)
+%%   if c=red then black else red;
+%% end;
+
+%% c := red;  /* initial value for c */
+%% when system.leftButtonPressedEvent
+%%     c := flip(c);
+%% end;
+%% \end{verbatim}
+
+Here is an example of using events with the \verb|when| macro, derived from
+a Fran example in which we cycle a color between red and black each time
+the left mouse button is pressed.
+
+\begin{verbatim}
+(define c 'red)
+(define (flip c) (if (eq? c 'red) 'black 'red))
+(when (send system left-button-down-event)
+  (set! c (flip c)))
+\end{verbatim}
+
+The \verb|when| macro says that at the instant the event occurs, the
+variable \verb|c| is set to red if it is currently black, and to black if
+it is currently red.  This is making use of the hybrid automata approach
+described in the introduction.  The clock advances continuously.  At the
+instant the left button is pressed, the statements in the body of the
+\verb|when| are executed, and so \verb|c| changes color.  (This happens
+instantaneously as far as the continuous real-time clock is concerned.)
+Note that \verb|set!| will need to be modified to evaluate the
+right-hand-side with respect to the current solution to the constraints and
+also to account for any constraints on the variable being set.  The
+\verb|wally-set!| macro defined in \verb|babelsberg/babelsberg.rkt| does
+what is required here.  Alternatively, we could replace this expression
+with the following, which accomplishes the same thing without needing to
+redefine \verb|set!|.
+\begin{verbatim}
+(assert (eq? c (flip (evaluate c))))
+\end{verbatim}
+
+%% \begin{verbatim}
+%% class Wiggler
+%%   instvars value;
+%%   def init(lo, hi)
+%%     -- set up constraints
+%%     always wiggle = sin(pi*system.time) 
+%%     always self.value = (hi-lo)? * (wiggle+1)/2
+%%     /* We left lo, hi, and wiggle as just local variables rather than
+%%        making them be instance variables, although if we wanted access
+%%        to them later we could make them be instance vars.  wiggle is
+%%        read-only since system.time is read-only; and the ? on the
+%%        expression (hi-lo) means that only self.value can change to
+%%        satisfy the constraint. */
+%%   end;
+%% \end{verbatim}
+
+Following the Fran example of a wiggler behavior, the following function
+makes an instance of a wiggler \verb|struct| whose value oscillates
+smoothly between \verb|lo| and \verb|hi|.
+\begin{verbatim}
+(struct wiggler (value))
+(define (make-wiggler lo hi)
+  (define-symbolic* value wiggle number?)
+  (always (equal? wiggle (sin (* pi time))))
+  (always (equal? value (* (- hi lo) (+ wiggle 1) 0.5)))
+  (wiggler value))
+\end{verbatim}
+
+%% \begin{verbatim}
+%% pBall := Circle.new;
+%% pBall.center := point(10,20);
+%% pBall.color := red;
+%% /* this causes the circle to keep growing and shrinking */
+%% wig := Wiggler.new(0.5,1);
+%% always pBall.radius = wig.value;
+
+%% /* rBall that tracks the changes in the size of  pBall */
+%% rBall := Circle.new;
+%% rBall.center := point(10,50);
+%% rBall.color := red;
+%% /* make rBall always be 1/10 the size of pBall
+%% always rBall.radius = pBall.radius * 0.1;
+%% \end{verbatim}
+
+Using \verb|make-wiggler|, we can define a red pulsing ball \verb|pBall|,
+and another ball \verb|rBall| that is 1/10 its size.  This uses the
+\verb|circle| struct defined in Section \ref{sec:basic-graphics}.
+
+\begin{verbatim}
+(define pBall (make-circle (point 10 20) 10 'red))
+(define rBall (make-circle (point 10 50) 1 'red))
+(define wig (make-wiggler 0.5 1.0))
+(always (equal? (circle-radius pBall) (wiggler-value wig)))
+(always (equal? (circle-radius rBall) (* 0.1 (circle-radius pBall))))
+\end{verbatim}
+
+%% \begin{verbatim}
+%% always im.center = system.mousePosition;
+%% \end{verbatim}
+
+This bit of code makes an image follow the mouse (indefinitely):
+
+\begin{verbatim}
+(struct image (center bits))
+(define im (image (point 100 100) (get-jpg "picture.bits")))
+(always (equal? (image-center im) (send system mouse-pos)))
+\end{verbatim}
+
+
+%% \begin{verbatim}
+%% while system.leftButtonPressed
+%%   im.center = system.mousePosition;
+%% end;
+%% \end{verbatim}
+
+More likely, we want the image to follow the mouse only when for
+example a button is down:
+
+\begin{verbatim}
+(while (send system left-button-down)
+  (equal? (image-center im) (send system mouse-pos)))
+\end{verbatim}
+
+\subsection{Integration and Differentiation}
+\label{sec:integration}
+
+Fran has integration with respect to time.  We should too.
+\verb|(integral f t0)| is the definite integral $\int_{t_0}^t f \, dt$,
+where $f$ is some expression, $t_0$ is a start time and $t$ is the current
+time.  There is also a \verb|derivative| macro, where \verb|(derivative e)|
+evaluates to the derivative of \verb|e| with respect to the current
+time.\footnote{Integration in Wallingford is not very general: it is
+  restricted to being with respect to time, and the upper limit is
+  implictly the current time.  These seem like reasonable choices if the
+  function being integrated is represented simply as a time-varying
+  expression.  (If we wanted a more general kind of integral macro, we
+  would want $f$ to be a function, for example.)  Also, Fran doesn't have
+  derivative \ldots\ maybe omit it for Wallingford as well?}
+
+
+As a first example, here is a ball with a position and velocity, and
+acceleration due to gravity.  (For simplicity, we ignore the ball's radius;
+it wouldn't be hard to include but just adds clutter.)  Initially here it
+is with no possibility of collisions.
+
+%% \begin{verbatim}
+%% class NoCollisionBall
+%%   def init
+%%     initialPos := self.position;
+%%     initialVel := 0;
+%%     always self.pos = initialPos? + integral(self.vel,self.time);
+%%     always self.vel = initialVel? + integral(g,time);
+%%     /* g is the acceleration due to gravity */    
+%%   end;
+%% \end{verbatim}
+
+\begin{verbatim}
+(struct ball (position velocity))
+(define (make-ball p0)
+  ; p0 is the initial position of the ball, and v0 is its initial velocity
+  ; p and v are the current position and velocity respectively
+  (define t0 time)
+  (define v0 0)    ; not really necessary to make this a variable, but seems tidier
+  (define-symbolic* p v number?)
+  (always (equal? p (+ p0 (integral v t0))))
+  ; g is the acceleration due to gravity
+  (always (equal? v (+ v0 (integral g t0))))
+  (ball p v))
+\end{verbatim}
+
+Here is the class \verb|Ball| again, this time inside a box.  It
+bounces off the walls, reducing its velocity in that case by the
+coefficient of restitution.  (The Fran paper calls this `reciprocity'
+but COR seems to be more standard.)
+
+\begin{verbatim}
+(define (make-ball startpos box)
+  ; box is the bounding box that it bounces around in
+  ; p0 is originally the initial position of the ball, and after
+  ; the first collision is its position at the last collision
+  (define p0 startpos)
+  (define t0 time)
+  (define v0 0)
+  (define cor 0.8)   ; coefficient of restitution
+  (define-symbolic* p v number?)
+  (while (not (collision ball box))
+    (equal? p (+ p0 (integral v t0)))
+    (equal? v (+ v0 (integral g t0))))
+  (when (collision ball box)
+    (set! v (compute-bounce-velocity ball box cor))
+    (set! v0 v)
+    (set! p0 p))
+  (ball p v))
+    
+(define (collision ball box)
+  ; return true if the box doesn't contain the ball
+  ; (or we could instead check whether the ball is exactly on a side of the box)
+  [code not shown])
+
+; reflect the velocity depending on which wall we hit, reducing it
+; by the coefficient of restitution 
+(define (compute-bounce-velocity ball box cor)
+  (if (or (equal? (rectangle-top box) (point-y (ball-position ball)))
+          (equal? (rectangle-bottom box) (point-y (ball-position ball))))
+      (point (* (point-x (ball-velocity ball) cor))
+             (* -1 (point-y (ball-velocity ball) cor)))
+      (point (* -1 (point-x (ball-velocity ball) cor))
+             (* (point-y (ball-velocity ball) cor)))))
+\end{verbatim}
+
+%% \begin{verbatim}
+%% class Ball
+%%   def init
+%%     self.box := .... [the bounding box that it bounces around in];
+%%     /* the coefficient of restitution */
+%%     self.cor = 0.8;
+%%     /* startPos is originally the initial position of the ball, and
+%%        following the first collision is its position at the last collision */
+%%     startPos := self.position;
+%%     /* similarly for startVel */
+%%     startVel := 0;
+%%     while not(collision)
+%%       self.pos = startPos? + integral(self.vel,self.time);
+%%       self.vel = startVel? + integral(g,time);
+%%       /* g is the acceleration due to gravity */    
+%%     end;
+%%     when collision
+%%       self.vel := self.compute_bounce_velocity();
+%%       startVel := self.vel;
+%%       /* note that we don't need to change self.pos */
+%%       startPos := self.pos  /* save the current position in startPos */
+%%     end;
+%%   end;
+
+%%   def collision
+%%     return not(self.box.contains(self.pos));
+%%     /* we could instead check whether self.pos is exactly on a side of the box */
+%%   end;
+
+%%   /* reflect the velocity depending on which wall we hit, reducing it
+%%      by the coefficient of restitution */
+%%   def compute_bounce_velocity
+%%     if (self.pos.y = self.box.top) | self.pos.y = self.box.bottom
+%%       return self.vel * vector(1,-1) * self.cor;
+%%     else
+%%       return self.vel * vector(-1,1) * self.cor;
+%%     end;
+%%   end;
+
+%% end;
+%% \end{verbatim}
+
+\subsection{Constraining the Clock}
+
+In the examples so far we've just used the \verb|time| of the current
+process without putting any constraints on it.  We could do so however.
+For example, following Fran, we could make the clock in the current process
+lag 2 seconds behind the system clock:
+
+\begin{verbatim}
+(always (equal? time (+ 2 (send system time))))
+\end{verbatim}
+
+Or slow it down by a factor of 2:
+
+\begin{verbatim}
+(always (equal? time (* 0.5 (send system time))))
+\end{verbatim}
+
+\section{Implementation}
+
+This section is just some rough notes at this point!
+
+Try to do this in Rosette, building on the current Wallingford
+implementation.  It's liable to be exceedingly slow --- the initial
+plan would be to not worry about this, but get the semantics right.
+Later, consider how to implement it more efficiently.
+
+Interval analysis, sampling, and \verb|when| and \verb|while| macros
+would be handled as follows.  The whole thing is driven by the
+\verb|display| process.  If the \verb|display| process wants to take a
+time step of $\delta$, we would verify that there are no times between
+the current time $t$ and $t+\delta$ such that the condition on any
+\verb|when| macros is true, and that the truth value of the condition
+on any \verb|while| macro remains unchanged.  If so, we can safely
+advance time by $\delta$.  If not, try advancing it by $\delta / 2$;
+continue until the conditions are met or the $\delta$ is so small that
+there is no visible change from applying it.  (Does this work??  Or
+maybe we could find an actual value for $\delta$ such that a
+\verb|when| condition becomes true or a \verb|while| condition changes
+from true to false or vice versa.  Need to figure this out.)
+
+\section{Alternatives to the Hybrid Automata Approach}
+
+The hybrid automata approach has the important advantage that it has
+been developed formally in prior work, hopefully allowing us to build
+on that formalism.  However, the two kinds of time are a bit
+unsatisfying.  What if we only wanted one kind?
+
+\subsection{Continuous Time Only}
+
+In this version we have only continuous time, dropping the imperative
+programming constructs altogether, including the program counter and
+discrete time.  Instead, the program would consist only of constraints
+(including temporal constraints) --- but no sequential code.  There
+would be no assignment statements.  In place of assignment statements
+in initialization code, the programmer would use \verb|once|
+constraints.  In place of assignment statements in \verb|when|
+statements, the language would include a \verb|prev| macro, with
+\verb|(prev expr)| evaluating to the state of \verb|expr| at time 
+$t - \delta$ for some $\delta$, with $\delta$ chosen to be small
+enough so that nothing in the program uses any times closer to $t$.
+The \verb|prev| expression would be be read-only, that is, the
+constraint solver can only find solutions that reference them but that
+don't affect them.  (See \cite{borning-lisp-symbolic-computation-1992}
+for a formal definition of ``read-only.'')
+
+Here is the flip example using \verb|prev|.
+
+\begin{verbatim}
+(define c 'red)
+(define (flip c) (if (eq? c 'red) 'black 'red))
+(when (send system left-button-down-event)
+  (assert (eq? c (flip (prev c)))))
+\end{verbatim}
+
+(A variant would be to provide a \verb|next| macro rather than or in
+addition to \verb|prev| --- in this case \verb|expr| in
+\verb|(next expr)| would be \emph{write-only} for the constraint
+solver.)
+
+I hypothesize that this version has the same expressive power as the
+one based on hybrid automata.  This could be demonstrated by showing how to
+transform one version into the other.  Sketch of how to do this:
+
+\begin{itemize}
+
+\item One direction: whenever there is an occurrence of \verb|(prev expr)|
+  in some assert, insert an assignment \verb|(set! temp expr)| before the
+  assert (using the \verb|wally-set!| version of \verb|set!|), and replace
+  \verb|(prev expr)| in the assert with \verb|temp|.
+
+\item Other direction: replace assignments \verb|(set! var expr)| with
+  \verb|(assert (equal? var (prev expr)))|.  We need to deal with the fact
+  that this yields simultaneous assignments, rather than sequential ones,
+  but it seems likely that there is a way to do this by introducing
+  additional variables.
+
+\end{itemize}
+
+\subsection{Discrete Time Only}
+
+This hasn't been worked out yet.  This version would very likely have the
+usual disadvantages of discrete time simulations, for example, having to
+worry about sampling and missing events such as the bouncing ball hitting
+the floor.  We might need to fall back to using just discrete time, but I
+first want to try continuous time.
+
+\bibliographystyle{plain}
+\bibliography{constraints}
+
+\end{document}

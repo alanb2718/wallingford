@@ -1,0 +1,56 @@
+Hybrid Systems Approach
+
+It seems like the hybrid systems approach described in the paper Ras
+gave me would work.
+
+Slogan: we are modeling or simulating a continuous system on a digital
+computer.
+
+
+The constructs in the fran.rkt file seem mostly OK.  "while" asserts a
+set of constraints that hold continuously.  (Note that they hold as
+long as the condition is true -- we might transition to a new state
+and then back into the while.)
+
+Probably: we can have multiple processes (frames of reference).  One
+important relation is that of an observer process O that references
+but does not change a model process M.  (This ignores Heisenberg and
+such; we could perhaps add that later.  Certainly eventually if we
+have multiple processes, they should be able to mutually interact.)
+
+Or we could have just one process, with lots of little interrupts to
+show frames of the animation.  This seems conceptually messier.
+
+Handling animation: have a separate observer process.
+
+Handling input events: have a separate 'system' process that we can
+observe.  It seems like we can mostly ignore the separate process part
+by having local variables constrained to be equal to system ones.
+(What about lags, missed observations, etc?  Or should we ignore those
+issues for now?)
+
+Does every process have a clock?  Do the clocks run at an arbitrary
+rate unless related to the system clock?  Or ...?
+
+To reference old state:
+
+(prev expr) is the same as (evaluate expr)
+
+
+
+
+
+
+Implementation
+
+system-frame-of-reference -- have something that updates the clock and
+mouse position periodically (when??)
+
+event detection: one approach would be to propose a time step.  Let t0
+be the current time and t1 be the proposed next time.  Then ask
+Rosette to find a time t such that t0<=t<=t1 and such that the event
+occurs in that interval.  If there is such an event, then need to
+halve the time step.  Otherwise can advance time.
+
+
+

@@ -1,0 +1,96 @@
+Notes on Implementing Reactive Version of Wallingford
+December 2015
+
+PROCESSES
+
+A central concept is a Process (or WallyProcess or Actor or
+FrameOfReference). 
+
+Each process has its own clock.  There isn't any default behavior of the
+clock.  It could be constrained to be equal to the system clock, to run at
+half the rate of the system clock, to be delayed by 2 seconds from the
+system clock, to be sync'd with the clock of another process, and so on.
+
+The clock may advance:
+ - due to an internal timer (e.g., clocked flipper example)
+ - due to a notification of some event its watching for (e.g., button click) 
+ - because it's observed
+
+
+
+An observer can watch a process - to do this, it sends a 'watch' message to
+the process, and gets back an indication of how to handle this.  Right now
+the options are:
+  - continuous (the process is changing continuously, so you need to sample)
+  - discrete (the process is changing in discrete steps; it will notify you
+    of any change)
+  - static (not changing)
+
+Not sure we need the static/discrete distinction.
+
+The watched process can also notify the observer it is changing its status
+(e.g. from discrete to continuous).
+
+An observer can also 'unwatch' a process.
+
+
+EXAMPLES
+
+PULSER.  Has its own clock.  (At any rate it needs to refer to a clock, and
+its probably better if it has its own.  Then we could have pulsers with
+differently running clocks.)  The pulser tells the viewer it varies
+continuously; it only updates when observed by the viewer.
+
+FLIPPER.  This is a circle that changes from black to red and back each
+time the mouse button is pressed.  When the 'when' macro is evaluated, the
+flipper tells the system that it wants to watch for button presses.  When
+the viewer says it's watching, the flipper says that it changes discretely,
+and notifies the viewer when the display needs to be refreshed.  Then in
+operation, if the button is pressed, the system notifies the flipper, which
+re-establishes the constraints in the body of the 'when'.  This in turn
+will cause the flipper to notify the view that it has changed.  The flipper
+has a clock, and I guess it advances it whenever it changes state, although
+it doesn't actually use time.
+
+CLOCKED FLIPPER.  This is a circle that changes from black to red and back
+every two seconds.  This uses a 'while' nested in a 'when'.  When the
+'when' macro is evaluated, it sets up an internal timer that goes off after
+two seconds (causing the clocked flipper's time to advance).  When the
+viewer says it's watching, the flipper says that it changes discretely, and
+notifies the viewer when the display needs to be refreshed.
+
+FALLING BALL.  Has its own clock.  It changes continuously.  The clock
+advances and position changes when the viewer observes it.
+
+BOUNCING BALL.  Has its own clock.  It changes continuously.  The clock
+advances and position changes when the viewer observes it or when it hits a
+wall.
+
+DRAGGING.  This is a circle that follows the mouse while the button is
+down.  This is implemented using a 'while' macro.  Initially it changes
+discretely.  In this state the observer just waits until notified.  When
+the button is held down it changes its status to 'continuous'.  In this
+state the observer keeps updating, either using its own clock or if the
+circle says it has changed back to 'discrete'.
+
+DRAG FOR 2 SECONDS.  This is a circle that follows the mouse for 2 seconds
+after a button push.  This is a nested construct (macro? temporal
+constraint?).  The outer one is a 'when', the inner one is a 'while'.
+
+
+DRAG AND DROP. .....
+
+
+
+VIEWS
+
+What is a view?
+
+a) a separate object, kept in sync with thing it is viewing using a constraint
+b) a message sent to the object that either returns the view or has some
+   side effect.  If it returns a view, then this is like a).  Side effect
+   seems unclean.
+
+END USER PROGRAMMING
+
+blocks?
