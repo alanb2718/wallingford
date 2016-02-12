@@ -34,4 +34,4 @@
 
 
 (define s (new selection-example%))
-(make-viewer s "Selection example")
+(make-viewer s #:title "Selection example")

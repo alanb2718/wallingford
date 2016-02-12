@@ -20,4 +20,4 @@
 
 
 (define p (new colored-pulser%))
-(make-viewer p "Colored pulser")
+(make-viewer p #:title "Colored pulser")

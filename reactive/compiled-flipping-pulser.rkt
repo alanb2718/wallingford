@@ -34,4 +34,4 @@
       (send this set-my-time (send this find-time target)))
   ))
 
-(make-viewer (new compiled-flipping-pulser%))
+(make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.01)

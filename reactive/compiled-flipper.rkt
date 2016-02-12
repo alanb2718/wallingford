@@ -35,4 +35,4 @@
 
 ; TODO: set alert?
 
-(make-viewer (new compiled-flipper%))
+(make-viewer (new compiled-flipper%) #:title "Compiled version of flipper" #:sleep-time 0.01)

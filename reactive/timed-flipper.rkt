@@ -15,4 +15,4 @@
                       (flip (previous (circle-color (image)))))))))
 
 (define p (new timed-flipper%))
-(make-viewer p "Timed flipper")
+(make-viewer p #:title "Timed flipper")

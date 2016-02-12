@@ -10,10 +10,11 @@
 (define viewer%
   (class reactive-thing%
     (inherit get-thread)
-    (init thing dc time-display)
+    (init thing dc time-display sleep-time)
     (define my-thing thing)
     (define my-dc dc)
     (define my-time-display time-display)
+    (define my-sleep-time sleep-time)
     (super-new)
     
     (define/override (match-thread-receive r)
@@ -64,7 +65,7 @@
                        (let loop ()
                          (send-syncd this update-view-syncd)
                          ; later: take account of compute time
-                         (sleep 0.1)
+                         (sleep my-sleep-time)
                          (if running (loop) (void)))))]))))
 
 ; Derive a new canvas (a drawing window) class to handle events
@@ -82,7 +83,7 @@
     (super-new)))
 
 ; make a viewer on a reactive-thing r
-(define (make-viewer r [title "A viewer"])
+(define (make-viewer r #:title [title "A viewer"] #:sleep-time [sleep-time 0.1])
   (define frame (new frame%
                      [label title]
                      [width 600]
@@ -112,7 +113,7 @@
   ; start the label off as blank, with enough blanks to accommodate any reasonable time
   (define td (new message% [parent controls] [label (make-string 30 #\space)]))
   ; make a viewer and start it up
-  (define v (new viewer% [thing r] [dc dc] [time-display td]))
+  (define v (new viewer% [thing r] [dc dc] [time-display td] [sleep-time sleep-time]))
   (send canv set-viewer v)
   (send frame show #t)
   (send dc clear)

@@ -24,4 +24,4 @@
       (send this set-my-time target))
   ))
 
-(make-viewer (new compiled-pulser%))
+(make-viewer (new compiled-pulser%) #:title "Compiled version of pulser" #:sleep-time 0.01)

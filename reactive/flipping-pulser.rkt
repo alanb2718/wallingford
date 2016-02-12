@@ -20,4 +20,4 @@
 
 
 (define f (new flipping-pulser%))
-(make-viewer f "Flipping pulser")
+(make-viewer f #:title "Flipping pulser")

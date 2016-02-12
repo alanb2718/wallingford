@@ -5,4 +5,4 @@
 
 ; make a new pulser and a viewer on it:
 (wally-clear)
-(make-viewer (new pulser%))
+(make-viewer (new pulser%) #:title "Pulser")
