@@ -217,15 +217,16 @@
       (let ([next-time (find-time target)])
         (assert (equal? symbolic-time next-time))
         ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
-        (define test-solution (wally-solve mysolution))
-        (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) test-solution))
+        (define save-solution mysolution)
+        (set! mysolution (wally-solve mysolution))
+        (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) mysolution))
                                      when-holders))
         ; assert the constraints in all of the bodies of the active whens and solve again
         (for-each (lambda (w) ((when-holder-body w))) active-whens)
         ; need to re-assert that symbolic-time equals next-time since wally-solve clears assertions
         (assert (equal? symbolic-time next-time))
-        ; this time actually update mysolution
-        (set! mysolution (wally-solve mysolution))
+        ; update mysolution starting with the saved-solution, so that 'previous' works correctly
+        (set! mysolution (wally-solve save-solution))
         ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
         ; have changed but that's ok -- we just don't want to miss telling them if it did.)
         (cond [(not (null? active-whens))

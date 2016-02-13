@@ -48,23 +48,21 @@
     (define/public (match-thread-receive r)
       (match r
         [(list 'show dc)
-         (send this update-mysolution)
          (send dc clear)
          (showthing myimage dc)]
         [(list 'show-syncd ch dc)
-         (send this update-mysolution)
          (send dc clear)
          (showthing myimage dc)
          (channel-put ch null)]
         [(list 'advance-time target)
-         (send this advance-time-helper target)]
+         (advance-time-helper target)]
         [(list 'advance-time)  ; version with default arg for target
-         (send this advance-time-helper (current-time))]
+         (advance-time-helper (current-time))]
         [(list 'advance-time-syncd ch target)
-         (send this advance-time-helper target)
+         (advance-time-helper target)
          (channel-put ch null)]
         [(list 'advance-time-syncd ch)
-         (send this advance-time-helper (current-time))
+         (advance-time-helper (current-time))
          (channel-put ch null)]
         [(list 'button-down-event event-time mx my)
          ; to avoid cycles, assume the button down event occurred at least 1 millisecond after the current symbolic-time
@@ -125,6 +123,8 @@
       (set-remove! watchers v)
       ; if this was the last watcher terminate any alert
       (terminate-old-alert))
+    (define/public (get-watchers)
+      watchers)
     
     (define (current-time)
       (- (current-milliseconds) time-at-startup))
@@ -148,8 +148,14 @@
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
-    (define/public (advance-time-helper target)
-      (error "should override in subclasses\n"))
+    (define (advance-time-helper target)
+      (let ([next-time (send this find-time target)])
+        (send this set-my-time next-time)
+        (send this update-mysolution)
+        ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
+        ; have changed but that's ok -- we just don't want to miss telling them if it did.)
+        (for/set ([w (send this get-watchers)]) (send-thing w thing-changed))
+        (if (< next-time target) (advance-time-helper target) (void))))
     
     ; ** alerts **
     (define (set-alert-helper)

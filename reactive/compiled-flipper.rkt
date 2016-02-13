@@ -20,19 +20,16 @@
       ; (when (button-pressed)
       ;  (assert (equal? (circle-color (image))
       ;                  (flip (previous (circle-color (image)))))))))
-      (let ([newcolor (if (button-pressed) (flip (circle-color (image))) (circle-color (image)))])
-        (send this update-myimage (circle (point 150 150) 50 newcolor))))
+      ; So if the button is pressed update the image with the flipped color
+      (cond [(button-pressed)
+             (send this update-myimage
+                   (struct-copy circle (image) [color (flip (circle-color (image)))]))]))
     (define/override (find-time target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       ; get-button-down-event-times
       (let* ([now (send this milliseconds)]
              [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
                                         (send this get-button-down-event-times))])
-        (if (null? potential-targets) target (car potential-targets))))
-    (define/override (advance-time-helper target)
-      (send this set-my-time (send this find-time target)))
-  ))
-
-; TODO: set alert?
+        (if (null? potential-targets) target (car potential-targets))))))
 
 (make-viewer (new compiled-flipper%) #:title "Compiled version of flipper" #:sleep-time 0.01)

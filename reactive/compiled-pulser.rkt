@@ -16,12 +16,8 @@
     (define/override (update-mysolution)
       ; compiling for this constraint:
       ;    (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))))
-      ; later: fix this to use something that automatically gets non-changed fields from the old value
-      (send this update-myimage (circle (point 150 150) (+ 60 (* 50 (sin (seconds)))) (color "blue"))))
+      (send this update-myimage (struct-copy circle (image) [radius  (+ 60 (* 50 (sin (seconds))))])))
     (define/override (find-time target)
-      target)
-    (define/override (advance-time-helper target)
-      (send this set-my-time target))
-  ))
+      target)))
 
 (make-viewer (new compiled-pulser%) #:title "Compiled version of pulser" #:sleep-time 0.01)
