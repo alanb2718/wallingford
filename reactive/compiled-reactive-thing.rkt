@@ -64,6 +64,15 @@
         [(list 'advance-time-syncd ch)
          (advance-time-helper (current-time))
          (channel-put ch null)]
+        [(list 'watched-by-syncd ch v)
+         (set-add! watchers v)
+         ; if this is the first watcher set up an alert to do push notification
+         (cond [(equal? 1 (set-count watchers)) (set-alert-helper)])
+         (channel-put ch null)]
+        [(list 'unwatched-by-syncd ch v)
+         (set-remove! watchers v)
+         ; if this was the last watcher terminate any alert
+         (terminate-old-alert)]
         [(list 'button-down-event event-time mx my)
          ; to avoid cycles, assume the button down event occurred at least 1 millisecond after the current symbolic-time
          (set! button-down-event-times
@@ -113,7 +122,7 @@
     (define/public (image) myimage)
     ; define a get-thread method so that mythread is accessible in subclasses
     (define/public (get-thread) mythread)
-        
+    
     ; viewers -- make these into thread messages
     (define/public (watched-by v)
       (set-add! watchers v)
@@ -123,6 +132,7 @@
       (set-remove! watchers v)
       ; if this was the last watcher terminate any alert
       (terminate-old-alert))
+        
     (define/public (get-watchers)
       watchers)
     

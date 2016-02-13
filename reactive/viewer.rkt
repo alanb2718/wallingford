@@ -9,7 +9,6 @@
 
 (define viewer%
   (class reactive-thing%
-    (inherit get-thread)
     (init thing dc time-display sleep-time)
     (define my-thing thing)
     (define my-dc dc)
@@ -52,13 +51,10 @@
         (string-append "Time: " (number->string whole-part) "." (number->string decimal-part))))
     
     (define running #f)
-    (define/public (unwatch)
-      (set! running #f)
-      (send my-thing unwatched-by this)
-      (send-syncd this refresh-syncd))
     (define/public (watch)
       (set! running #t)
       (send my-thing watched-by this)
+      ; (send-syncd my-thing watched-by-syncd this)
       (refresh-helper)
       ; if my-thing wants pull sampling, set up a thread to poll every 100 ms until the 'stop' button is pushed
       (cond [(member 'pull (send my-thing get-sampling))
@@ -67,7 +63,12 @@
                          (send-syncd this update-view-syncd)
                          ; later: take account of compute time
                          (sleep my-sleep-time)
-                         (if running (loop) (void)))))]))))
+                         (if running (loop) (void)))))]))
+    (define/public (unwatch)
+      (set! running #f)
+      (send my-thing unwatched-by this)
+      ; (send-syncd my-thing unwatched-by-syncd this)
+      (send-syncd this refresh-syncd))))
 
 ; Derive a new canvas (a drawing window) class to handle events
 (define my-canvas%

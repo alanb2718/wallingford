@@ -5,6 +5,12 @@
 (require "../applications/geothings.rkt")
 
 (provide when reactive-thing% send-thing send-syncd)
+; Each reactive thing has its own thread.  Any messages from another thread should use send-thing
+; or send-syncd for synchronization, rather than sending an ordinary message to the thing.
+; Internally there are some helper functions, and also some methods for use in constraint conditions
+; like (seconds) and (milliseconds).  When used in a constraint condition they can be called directly,
+; since the constraint condition will be evaluated in the thing's thread -- otherwise they should use
+; evaluate-syncd.
 
 ; all times are relative to the time the program is started, to keep the number of bits down
 (define time-at-startup (current-milliseconds))
@@ -60,11 +66,8 @@
     (define mysolution (wally-solve))
     (stay symbolic-time)
     
-    ; For now, the instance of reactive-thing is in charge, and receives ordinary messages and then
-    ; sends them on to the thread.  The 'match' part is in a separate method named match-thread-receive
-    ; to allow it to be overridden or augmented in subclasses.  Another possible design would be to not
-    ; use objects at all, but rather to have the thread itself represent the reactive-thing, but this
-    ; wouldn't support subclassing reactive-thing.
+    ; Loop for receiving thread messages.  The 'match' part is in a separate method named
+    ; match-thread-receive to allow it to be overridden or augmented in subclasses.
     (define mythread (thread
                       (lambda ()
                         (let loop ()
@@ -98,6 +101,15 @@
         [(list 'advance-time-syncd ch)
          (advance-time-helper (current-time))
          (channel-put ch null)]
+        [(list 'watched-by-syncd ch v)
+         (set-add! watchers v)
+         ; if this is the first watcher set up an alert to do push notification
+         (cond [(equal? 1 (set-count watchers)) (set-alert-helper)])
+         (channel-put ch null)]
+        [(list 'unwatched-by-syncd ch v)
+         (set-remove! watchers v)
+         ; if this was the last watcher terminate any alert
+         (terminate-old-alert)]
         [(list 'button-down-event event-time mx my)
          ; to avoid cycles, assume the button down event occurred at least 1 millisecond after the current symbolic-time
          (set! button-down-event-times
@@ -109,9 +121,9 @@
          (cond [(not (set-empty? watchers)) (set-alert-helper)])]
         [(list 'milliseconds-syncd ch)
          (channel-put ch (evaluate symbolic-time mysolution))]
-        ; evaluate thunk for side effects only (no syncronization)
         [(list 'set-alert)
          (set-alert-helper)]
+        ; evaluate thunk for side effects only (no syncronization)
         [(list 'do-evaluate thunk)
          (thunk)]
         [(list 'evaluate-syncd ch thunk)
@@ -134,7 +146,8 @@
              (cond [(not (null? when-holders))
                     (set! sampling (cons 'push sampling))])])
       sampling)
-    ; items should be a list of temporal function calls.  Return true if code contains one of the calls.
+    ; Helper function for get-sampling.  items should be a list of temporal function calls.
+    ; Return true if code contains one of the calls.
     (define (includes-one-of code items)
       (cond [(member code items) #t]
             [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
@@ -167,9 +180,9 @@
     (define/public (milliseconds-evaluated)
       (evaluate symbolic-time mysolution))
     (define/public (image) myimage)
-    ; define a get-thread method so that mythread is accessible in subclasses
+    ; define a get-thread method to make mythread accessible for the send-thing and send-syncd macros
     (define/public (get-thread) mythread)
-        
+
     ; viewers -- make these into thread messages
     (define/public (watched-by v)
       (set-add! watchers v)
@@ -179,7 +192,7 @@
       (set-remove! watchers v)
       ; if this was the last watcher terminate any alert
       (terminate-old-alert))
-    
+
     ; helper functions
     (define (current-time)
       (- (current-milliseconds) time-at-startup))

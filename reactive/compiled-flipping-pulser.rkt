@@ -26,11 +26,11 @@
                                                [radius  (+ 60 (* 50 (sin (seconds))))]
                                                [color newcolor]))))
     (define/override (find-time target)
-      ; if there is a button press between the current time and target, advance to that, and otherwise to target
+      ; if there are button presses between the current time and target, advance to the earliest one, and otherwise to target
       (let* ([now (send this milliseconds)]
              [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
                                         (send this get-button-down-event-times))])
-        (if (null? potential-targets) target (car potential-targets))))))
+        (if (null? potential-targets) target (apply min potential-targets))))))
 
 ; loses some clicks if sleep-time is 0.01 ??
-(make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.1)
+(make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.01)
