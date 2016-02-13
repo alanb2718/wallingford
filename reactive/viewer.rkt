@@ -59,6 +59,7 @@
     (define/public (watch)
       (set! running #t)
       (send my-thing watched-by this)
+      (refresh-helper)
       ; if my-thing wants pull sampling, set up a thread to poll every 100 ms until the 'stop' button is pushed
       (cond [(member 'pull (send my-thing get-sampling))
              (thread (lambda ()

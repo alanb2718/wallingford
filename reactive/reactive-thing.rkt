@@ -58,8 +58,6 @@
     ; mysolution is the current solution (this is stored explicitly since Rosette has a
     ; different current-solution for different threads)
     (define mysolution (wally-solve))
-    (define (update-mysolution)
-      (set! mysolution (wally-solve mysolution)))
     (stay symbolic-time)
     
     ; For now, the instance of reactive-thing is in charge, and receives ordinary messages and then
@@ -84,11 +82,9 @@
     (define/public (match-thread-receive r)
       (match r
         [(list 'show dc)
-         (update-mysolution)
          (send dc clear)
          (showthing (evaluate myimage mysolution) dc)]
         [(list 'show-syncd ch dc)
-         (update-mysolution)
          (send dc clear)
          (showthing (evaluate myimage mysolution) dc)
          (channel-put ch null)]
@@ -221,13 +217,15 @@
       (let ([next-time (find-time target)])
         (assert (equal? symbolic-time next-time))
         ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
-        (update-mysolution)
-        (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) mysolution)) when-holders))
+        (define test-solution (wally-solve mysolution))
+        (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) test-solution))
+                                     when-holders))
         ; assert the constraints in all of the bodies of the active whens and solve again
         (for-each (lambda (w) ((when-holder-body w))) active-whens)
-        ; need to re-assert that symbolic-time equals next-time since update-mysolution clears assertions
+        ; need to re-assert that symbolic-time equals next-time since wally-solve clears assertions
         (assert (equal? symbolic-time next-time))
-        (update-mysolution)
+        ; this time actually update mysolution
+        (set! mysolution (wally-solve mysolution))
         ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
         ; have changed but that's ok -- we just don't want to miss telling them if it did.)
         (cond [(not (null? active-whens))
