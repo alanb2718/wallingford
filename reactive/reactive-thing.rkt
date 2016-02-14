@@ -8,9 +8,9 @@
 ; Each reactive thing has its own thread.  Any messages from another thread should use send-thing
 ; or send-syncd for synchronization, rather than sending an ordinary message to the thing.
 ; Internally there are some helper functions, and also some methods for use in constraint conditions
-; like (seconds) and (milliseconds).  When used in a constraint condition they can be called directly,
-; since the constraint condition will be evaluated in the thing's thread -- otherwise they should use
-; evaluate-syncd.
+; like (seconds) and (milliseconds).  When used in a when constraint they can be called directly,
+; since the constraint condition or body will be evaluated in the thing's thread -- otherwise they
+; should be called using evaluate-syncd.
 
 ; all times are relative to the time the program is started, to keep the number of bits down
 (define time-at-startup (current-milliseconds))
