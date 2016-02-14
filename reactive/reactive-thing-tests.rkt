@@ -24,11 +24,15 @@
   (test-case
    "test advance time with one when"
    (wally-clear)
-   (define r (new reactive-thing%))
    (define count 0)
    (define (get-count) count)
-   (when (thing r) (equal? (send r milliseconds) 100)
-     (set! count (+ 1 count)))
+   (define one-when-tester%
+     (class reactive-thing%
+       (super-new)
+       (when (equal? (send r milliseconds) 100)
+         (set! count (+ 1 count)))))
+
+   (define r (new one-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
    (check-equal? (send-syncd r evaluate-syncd get-count) 0)
    
@@ -48,14 +52,17 @@
   (test-case
    "test advance time with multiple whens"
    (wally-clear)
-   (define r (new reactive-thing%))
    (define times '())
    (define (get-times) times)
+   (define multi-when-tester%
+     (class reactive-thing%
+       (super-new)
+       (when (equal? (send r milliseconds) 100)
+         (set! times (cons (list "when 100" (evaluate (send r milliseconds))) times)))
+       (when (equal? (send r milliseconds) 200)
+         (set! times (cons (list "when 200" (evaluate (send r milliseconds))) times)))))
    
-   (when (thing r) (equal? (send r milliseconds) 100)
-     (set! times (cons (list "when 100" (evaluate (send r milliseconds))) times)))
-   (when (thing r) (equal? (send r milliseconds) 200)
-     (set! times (cons (list "when 200" (evaluate (send r milliseconds))) times)))
+   (define r (new multi-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
    (check-equal? (send-syncd r evaluate-syncd get-times) '())
    
@@ -75,11 +82,14 @@
   (test-case
    "test button event handling (just with reactive thing programatically, not with a viewer)"
    (wally-clear)
-   (define r (new reactive-thing%))
    (define times '())
    (define (get-times) times)
-   (when (thing r) (send r button-pressed)
-     (set! times (cons (list "button" (evaluate (send r milliseconds))) times)))
+   (define button-events-tester%
+     (class reactive-thing%
+       (super-new)
+       (when (send r button-pressed)
+         (set! times (cons (list "button" (evaluate (send r milliseconds))) times)))))
+   (define r (new button-events-tester%))
    (send-thing r advance-time 50)
    (check-equal? (send-syncd r milliseconds-syncd) 50)
    (check-equal? (send-syncd r evaluate-syncd get-times) '())
@@ -87,18 +97,20 @@
    (send-thing r button-down-event 200 0 0)
    (send-thing r advance-time 300)
    (check-equal? (send-syncd r milliseconds-syncd) 300)
-   (check-equal? (send-syncd r evaluate-syncd get-times) '(("button" 200) ("button" 100)))
-   ))
+   (check-equal? (send-syncd r evaluate-syncd get-times) '(("button" 200) ("button" 100)))))
 
 (define (button-events-same-times)
   (test-case
    "test button event handling advancing to the same time as the button down"
    (wally-clear)
-   (define r (new reactive-thing%))
    (define times '())
    (define (get-times) times)
-   (when (thing r) (send r button-pressed)
-     (set! times (cons (list "button" (evaluate (send r milliseconds))) times)))
+   (define button-events-tester%
+     (class reactive-thing%
+       (super-new)
+       (when (send r button-pressed)
+         (set! times (cons (list "button" (evaluate (send r milliseconds))) times)))))
+   (define r (new button-events-tester%))
    (send-thing r advance-time 50)
    (check-equal? (send-syncd r milliseconds-syncd) 50)
    (check-equal? (send-syncd r evaluate-syncd get-times) '())
@@ -117,8 +129,7 @@
    (check-equal? (send-syncd r evaluate-syncd get-times) '(("button" 200) ("button" 100)))
    (send-thing r advance-time 250)
    (check-equal? (send-syncd r milliseconds-syncd) 250)
-   (check-equal? (send-syncd r evaluate-syncd get-times) '(("button" 200) ("button" 100)))
-   ))
+   (check-equal? (send-syncd r evaluate-syncd get-times) '(("button" 200) ("button" 100)))))
 
 (define (sampling-tests)
   (test-case
@@ -140,9 +151,13 @@
    (check-equal? (send r2 get-sampling) '(pull))
    ;
    (wally-clear)
-   (define r3 (new reactive-thing%))
-   (when (thing r3) (send r3 button-pressed)
-     (void))
+   (define test-when%
+     (class reactive-thing%
+       (inherit seconds image)
+       (super-new [init-image (make-circle)])
+       (when (send r3 button-pressed)
+         (void))))
+   (define r3 (new test-when%))
    (check-equal? (send r3 get-sampling) '(push))
    (wally-clear)
    (define test-always-and-when%
@@ -152,8 +167,7 @@
        (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
        (when #f (void))))
    (define r4 (new test-always-and-when%))
-   (check-equal? (send r4 get-sampling) '(push pull))
-   ))
+   (check-equal? (send r4 get-sampling) '(push pull))))
 
 (define reactive-thing-tests 
   (test-suite 

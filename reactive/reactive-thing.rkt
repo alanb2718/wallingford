@@ -17,15 +17,11 @@
 
 ; struct to hold whens -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
-; when macro (note that this overrides the built-in Racket 'when' - but easy to just use 'cond' for that)
-; If the 'when' isn't used within an instance of reactive-thing or a subclass, need to pass in the thing
-; explicitly using the (thing t) form.
-(define-syntax when
-  (syntax-rules (thing)
-    ((when (thing t) test e ...)  ; version in which the reactive-thing is passed in explicitly
-     (send t add-when (when-holder (lambda () test) (lambda () e ...))))
-    ((when test e ...)
-     (send this add-when (when-holder (lambda () test) (lambda () e ...))))))
+; Definition of 'when' macro.
+; Note that this overrides the built-in Racket 'when' - but easy to just use 'cond' for that.
+; 'when' should be used within an instance of reactive-thing or a subclass since it references 'this'
+(define-syntax-rule (when test e ...)
+  (send this add-when (when-holder (lambda () test) (lambda () e ...))))
 
 ; send-thing is like send, except that the message is directed to the thing's thread
 (define-syntax-rule (send-thing thing msg args ...)
