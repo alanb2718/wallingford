@@ -201,51 +201,52 @@
     ; 'when' condition true.  If there aren't any values between the current time and the target that makes
     ; a 'when' condition true, then return the target.  Note that the calls to solve in this function use a
     ; separate assertion stack, leaving alone the global stack and solution.
-    (define (find-time target)
+    (define (find-time cur-time target)
       ; if there aren't any when statements, just return the target time, otherwise solve for the time to jump to
-      (if (null? when-holders)
-          target
-          (let ([old-time (evaluate symbolic-time mysolution)])
-            (assert (> symbolic-time old-time))
-            (assert (or (equal? symbolic-time target) 
-                        (and (< symbolic-time target) (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
-            ; in wallingford.rkt we needed to hack around the start condition:
-            ;     (let minimize ([keep-going (<= 0 (abs total-penalty))])
-            (let find-time ([keep-going #t])
-              (with-handlers ([exn:fail? void])    ; if unsat we are done: (current-solution) holds the minimum value for current-time
-                ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-                ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
-                ; if the value of this expression is true then one of the 'when' conditions holds
-                ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
-                (solve (assert keep-going)) ; the best solution seen so far.
-                (find-time (< symbolic-time (evaluate symbolic-time)))))
-            (clear-asserts)
-            ; symbolic-time still retains its value in the solution even though we are clearing asserts
-            (evaluate symbolic-time))))
+      (cond [(null? when-holders) target]
+            [else (assert (> symbolic-time cur-time))
+                  (assert (or (equal? symbolic-time target)
+                              (and (< symbolic-time target) (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
+                  ; in wallingford.rkt we needed to hack around the start condition:
+                  ;     (let minimize ([keep-going (<= 0 (abs total-penalty))])
+                  (let search ([keep-going #t])
+                    (with-handlers ([exn:fail? void])    ; if unsat we are done: (current-solution) holds the minimum value for current-time
+                      ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
+                      ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
+                      ; if the value of this expression is true then one of the 'when' conditions holds
+                      ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
+                      (solve (assert keep-going)) ; the best solution seen so far.
+                      (search (< symbolic-time (evaluate symbolic-time)))))
+                  (clear-asserts)
+                  ; symbolic-time still retains its value in the solution even though we are clearing asserts
+                  (evaluate symbolic-time)]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define (advance-time-helper target)
-      (let ([next-time (find-time target)])
-        (assert (equal? symbolic-time next-time))
-        ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
-        (define save-solution mysolution)
-        (set! mysolution (wally-solve mysolution))
-        (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) mysolution))
-                                     when-holders))
-        ; assert the constraints in all of the bodies of the active whens and solve again
-        (for-each (lambda (w) ((when-holder-body w))) active-whens)
-        ; need to re-assert that symbolic-time equals next-time since wally-solve clears assertions
-        (assert (equal? symbolic-time next-time))
-        ; update mysolution starting with the saved-solution, so that 'previous' works correctly
-        (set! mysolution (wally-solve save-solution))
-        ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
-        ; have changed but that's ok -- we just don't want to miss telling them if it did.)
-        (cond [(not (null? active-whens))
-               (for/set ([w watchers]) (send-thing w thing-changed))])
-        ; if we didn't get to the target try again
-        (if (< next-time target) (advance-time-helper target) (void))))
+      (let ([cur-time (evaluate symbolic-time mysolution)])
+        ; make sure we haven't gone by the target time already - if we have, don't do anything
+        (cond [(< cur-time target)
+               (let ([next-time (find-time cur-time target)])
+                 (assert (equal? symbolic-time next-time))
+                 ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
+                 (define save-solution mysolution)
+                 (set! mysolution (wally-solve mysolution))
+                 (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) mysolution))
+                                              when-holders))
+                 ; assert the constraints in all of the bodies of the active whens and solve again
+                 (for-each (lambda (w) ((when-holder-body w))) active-whens)
+                 ; need to re-assert that symbolic-time equals next-time since wally-solve clears assertions
+                 (assert (equal? symbolic-time next-time))
+                 ; update mysolution starting with the saved-solution, so that 'previous' works correctly
+                 (set! mysolution (wally-solve save-solution))
+                 ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
+                 ; have changed but that's ok -- we just don't want to miss telling them if it did.)
+                 (cond [(not (null? active-whens))
+                        (for/set ([w watchers]) (send-thing w thing-changed))])
+                 ; if we didn't get to the target try again
+                 (if (< next-time target) (advance-time-helper target) (void)))])))
     
     ; ** alerts **
     (define (set-alert-helper)
@@ -257,14 +258,17 @@
       ; we could use that as the first value, and then avoid setting up a thread at all.  (This seems a bit
       ; cleaner and also like it would make zero difference in practice.)
       (terminate-old-alert)
-      (let* ([in-a-week (+ (evaluate symbolic-time mysolution) (* 1000 60 60 24 7))] ; a week from now
-             [target (find-time in-a-week)]
+      (let* ([cur-time (evaluate symbolic-time mysolution)]
+             [in-a-week (+ cur-time (* 1000 60 60 24 7))] ; a week from now
+             [target (find-time cur-time in-a-week)]
              [seconds-to-sleep  (/ (- target (current-time)) 1000.0)])
         ; make a new thread that wakes up at target and advances time to the target, then recursively
         ; sets another alert
         (set! alert (thread (lambda ()
                               ; seconds-to-sleep might be negative, if clock time advanced beyond the target already
                               (cond [(> seconds-to-sleep 0.0) (sleep seconds-to-sleep)])
+                              ; we might already have gone by the target -- that's ok, since advance-time-syncd
+                              ; won't do anything in that case
                               (send-syncd this advance-time-syncd target)
                               (send-thing this set-alert))))))
     (define (terminate-old-alert) ; disable any existing alerts

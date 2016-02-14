@@ -159,13 +159,15 @@
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define (advance-time-helper target)
-      (let ([next-time (send this find-time target)])
-        (send this set-my-time next-time)
-        (send this update-mysolution)
-        ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
-        ; have changed but that's ok -- we just don't want to miss telling them if it did.)
-        (for/set ([w (send this get-watchers)]) (send-thing w thing-changed))
-        (if (< next-time target) (advance-time-helper target) (void))))
+      ; make sure we haven't gone by the target time already - if we have, don't do anything
+      (cond [(< my-time target)
+             (let ([next-time (send this find-time target)])
+               (send this set-my-time next-time)
+               (send this update-mysolution)
+               ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
+               ; have changed but that's ok -- we just don't want to miss telling them if it did.)
+               (for/set ([w (send this get-watchers)]) (send-thing w thing-changed))
+               (if (< next-time target) (advance-time-helper target) (void)))]))
     
     ; ** alerts **
     (define (set-alert-helper)
@@ -185,6 +187,8 @@
         (set! alert (thread (lambda ()
                               ; seconds-to-sleep might be negative, if clock time advanced beyond the target already
                               (cond [(> seconds-to-sleep 0.0) (sleep seconds-to-sleep)])
+                              ; we might already have gone by the target -- that's ok, since advance-time-syncd
+                              ; won't do anything in that case
                               (send-syncd this advance-time-syncd target)
                               (send-thing this set-alert))))))
     (define (terminate-old-alert) ; disable any existing alerts
