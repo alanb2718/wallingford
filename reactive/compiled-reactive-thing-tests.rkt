@@ -1,19 +1,29 @@
 #lang s-exp rosette
-;; unit tests for reactive-thing%.  Run these from all-tests.rkt
+;; unit tests for compiled-reactive-thing% -- these should be parallel to the tests for reactive-thing%
 
 (require rackunit rackunit/text-ui)
 ; (require racket/gui/base)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")
+(require "compiled-reactive-thing.rkt")
 
-(provide reactive-thing-tests)
+(provide compiled-reactive-thing-tests)
 
 (define (advance-time-no-whens)
   (test-case
    "test advance time with no whens"
    (wally-clear)
-   (define r (new reactive-thing%))
+   (define no-constraints-tester%
+     (class compiled-reactive-thing%
+       (super-new)
+       (define/override (get-sampling)
+         '())
+       (define/override (update-mysolution)
+         (void))
+       (define/override (find-time target)
+         target)))
+   (define r (new no-constraints-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
    (send-thing r advance-time 30)
    (check-equal? (send-syncd r milliseconds-syncd) 30)
@@ -27,11 +37,18 @@
    (define count 0)
    (define (get-count) count)
    (define one-when-tester%
-     (class reactive-thing%
+     (class compiled-reactive-thing%
        (super-new)
-       (when (equal? (send r milliseconds) 100)
-         (set! count (+ 1 count)))))
-
+       (define/override (get-sampling)
+         '(push))
+       (define/override (update-mysolution)
+         (if (equal? (send this milliseconds) 100)
+             (set! count (+ 1 count))
+             (void)))
+       (define/override (find-time target)
+         (let ([now (send this milliseconds)])
+           (if (and (< now 100) (> target 100)) 100 target)))))
+   
    (define r (new one-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
    (check-equal? (send-syncd r evaluate-syncd get-count) 0)
@@ -55,12 +72,22 @@
    (define times '())
    (define (get-times) times)
    (define multi-when-tester%
-     (class reactive-thing%
+     (class compiled-reactive-thing%
        (super-new)
-       (when (equal? (send r milliseconds) 100)
-         (set! times (cons (list "when 100" (evaluate (send r milliseconds))) times)))
-       (when (equal? (send r milliseconds) 200)
-         (set! times (cons (list "when 200" (evaluate (send r milliseconds))) times)))))
+       (define/override (get-sampling)
+         '(push))
+       (define/override (update-mysolution)
+          (let ([now (send this milliseconds)])
+            (cond [(equal? now 100)
+                   (set! times (cons (list "when 100" now) times))]
+                  [(equal? now 200)
+                   (set! times (cons (list "when 200" now) times))]
+                  [else (void)])))
+       (define/override (find-time target)
+         (let ([now (send this milliseconds)])
+           (cond [(and (< now 100) (> target 100)) 100]
+                 [(and (< now 200) (> target 200)) 200]
+                 [else target])))))
    
    (define r (new multi-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
@@ -84,12 +111,23 @@
    (wally-clear)
    (define times '())
    (define (get-times) times)
+   ; compiling for this constraint:
+   ;   (when (send r button-pressed)
+   ;      (set! times (cons (list "button" (evaluate (send r milliseconds))) times)))))
    (define button-events-tester%
-     (class reactive-thing%
+     (class compiled-reactive-thing%
        (inherit milliseconds button-pressed)
        (super-new)
-       (when (button-pressed)
-         (set! times (cons (list "button" (evaluate (milliseconds))) times)))))
+       (define/override (get-sampling)
+         '(push))
+       (define/override (update-mysolution)
+         (cond [(button-pressed)
+                (set! times (cons (list "button" (milliseconds)) times))]))
+       (define/override (find-time target)
+         (let* ([now (milliseconds)]
+                [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
+                                           (send this get-button-down-event-times))])
+           (if (null? potential-targets) target (apply min potential-targets))))))
    (define r1 (new button-events-tester%))
    (send-thing r1 advance-time 50)
    (check-equal? (send-syncd r1 milliseconds-syncd) 50)
@@ -99,7 +137,7 @@
    (send-thing r1 advance-time 300)
    (check-equal? (send-syncd r1 milliseconds-syncd) 300)
    (check-equal? (send-syncd r1 evaluate-syncd get-times) '(("button" 200) ("button" 100)))
-   ; test button event handling advancing to the same time as the button down
+   ; now test button event handling advancing to the same time as the button down
    (wally-clear)
    (set! times '())
    (define r2 (new button-events-tester%))
@@ -107,7 +145,6 @@
    (check-equal? (send-syncd r2 milliseconds-syncd) 50)
    (check-equal? (send-syncd r2 evaluate-syncd get-times) '())
    ; button down sent before advance time (but both to time 100)
-   ; sending advance time first then button down doesn't work (system isn't clairvoyant)
    (send-thing r2 button-down-event 100 0 0)
    (send-thing r2 advance-time 100)
    (check-equal? (send-syncd r2 milliseconds-syncd) 100)
@@ -161,9 +198,9 @@
    (define r4 (new test-always-and-when%))
    (check-equal? (send r4 get-sampling) '(push pull))))
 
-(define reactive-thing-tests 
+(define compiled-reactive-thing-tests 
   (test-suite 
-   "run tests for reactive-thing"
+   "run tests for compiled-reactive-thing"
    (advance-time-no-whens)
    (advance-time-one-when)
    (advance-time-multiple-whens)

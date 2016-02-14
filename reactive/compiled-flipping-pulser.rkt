@@ -32,5 +32,4 @@
                                         (send this get-button-down-event-times))])
         (if (null? potential-targets) target (apply min potential-targets))))))
 
-; loses some clicks if sleep-time is 0.01 ??
 (make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.01)
