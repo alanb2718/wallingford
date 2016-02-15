@@ -25,11 +25,10 @@
         (send this update-myimage (struct-copy circle (image)
                                                [radius  (+ 60 (* 50 (sin (seconds))))]
                                                [color newcolor]))))
-    (define/override (find-time target)
+    (define/override (find-time mytime target)
       ; if there are button presses between the current time and target, advance to the earliest one, and otherwise to target
-      (let* ([now (send this milliseconds)]
-             [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
-                                        (send this get-button-down-event-times))])
+      (let ([potential-targets (filter (lambda (t) (and (> t mytime) (< t target)))
+                                       (send this get-button-down-event-times))])
         (if (null? potential-targets) target (apply min potential-targets))))))
 
 (make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.01)

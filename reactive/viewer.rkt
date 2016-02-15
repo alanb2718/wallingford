@@ -3,12 +3,13 @@
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
-(require "reactive-thing.rkt")
+(require "abstract-reactive-thing.rkt")
+(require "compiled-reactive-thing.rkt")
 
 (provide viewer% make-viewer)
 
 (define viewer%
-  (class reactive-thing%
+  (class compiled-reactive-thing%
     (init thing dc time-display sleep-time)
     (define my-thing thing)
     (define my-dc dc)
@@ -56,7 +57,8 @@
       (send my-thing watched-by this)
       ; (send-syncd my-thing watched-by-syncd this)
       (refresh-helper)
-      ; if my-thing wants pull sampling, set up a thread to poll every 100 ms until the 'stop' button is pushed
+      ; if my-thing wants pull sampling, set up a thread to poll every my-sleep-time seconds
+      ; until the 'stop' button is pushed
       (cond [(member 'pull (send my-thing get-sampling))
              (thread (lambda ()
                        (let loop ()

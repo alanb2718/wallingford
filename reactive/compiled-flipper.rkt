@@ -24,12 +24,11 @@
       (cond [(button-pressed)
              (send this update-myimage
                    (struct-copy circle (image) [color (flip (circle-color (image)))]))]))
-    (define/override (find-time target)
+    (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       ; get-button-down-event-times
-      (let* ([now (send this milliseconds)]
-             [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
-                                        (send this get-button-down-event-times))])
+      (let ([potential-targets (filter (lambda (t) (and (> t mytime) (< t target)))
+                                       (send this get-button-down-event-times))])
         (if (null? potential-targets) target (car potential-targets))))))
 
 (make-viewer (new compiled-flipper%) #:title "Compiled version of flipper" #:sleep-time 0.01)

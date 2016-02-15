@@ -17,7 +17,7 @@
       ; compiling for this constraint:
       ;    (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))))
       (send this update-myimage (struct-copy circle (image) [radius  (+ 60 (* 50 (sin (seconds))))])))
-    (define/override (find-time target)
+    (define/override (find-time mytime target)
       target)))
 
 (make-viewer (new compiled-pulser%) #:title "Compiled version of pulser" #:sleep-time 0.01)

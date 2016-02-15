@@ -21,7 +21,7 @@
          '())
        (define/override (update-mysolution)
          (void))
-       (define/override (find-time target)
+       (define/override (find-time mytime target)
          target)))
    (define r (new no-constraints-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
@@ -45,9 +45,8 @@
          (if (equal? (send this milliseconds) 100)
              (set! count (+ 1 count))
              (void)))
-       (define/override (find-time target)
-         (let ([now (send this milliseconds)])
-           (if (and (< now 100) (> target 100)) 100 target)))))
+       (define/override (find-time mytime target)
+         (if (and (< mytime 100) (> target 100)) 100 target))))
    
    (define r (new one-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
@@ -77,17 +76,16 @@
        (define/override (get-sampling)
          '(push))
        (define/override (update-mysolution)
-          (let ([now (send this milliseconds)])
-            (cond [(equal? now 100)
-                   (set! times (cons (list "when 100" now) times))]
-                  [(equal? now 200)
-                   (set! times (cons (list "when 200" now) times))]
-                  [else (void)])))
-       (define/override (find-time target)
          (let ([now (send this milliseconds)])
-           (cond [(and (< now 100) (> target 100)) 100]
-                 [(and (< now 200) (> target 200)) 200]
-                 [else target])))))
+           (cond [(equal? now 100)
+                  (set! times (cons (list "when 100" now) times))]
+                 [(equal? now 200)
+                  (set! times (cons (list "when 200" now) times))]
+                 [else (void)])))
+       (define/override (find-time mytime target)
+         (cond [(and (< mytime 100) (> target 100)) 100]
+               [(and (< mytime 200) (> target 200)) 200]
+               [else target]))))
    
    (define r (new multi-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
@@ -123,10 +121,9 @@
        (define/override (update-mysolution)
          (cond [(button-pressed)
                 (set! times (cons (list "button" (milliseconds)) times))]))
-       (define/override (find-time target)
-         (let* ([now (milliseconds)]
-                [potential-targets (filter (lambda (t) (and (> t now) (< t target)))
-                                           (send this get-button-down-event-times))])
+       (define/override (find-time mytime target)
+         (let ([potential-targets (filter (lambda (t) (and (> t mytime) (< t target)))
+                                          (send this get-button-down-event-times))])
            (if (null? potential-targets) target (apply min potential-targets))))))
    (define r1 (new button-events-tester%))
    (send-thing r1 advance-time 50)
@@ -160,43 +157,7 @@
    (check-equal? (send-syncd r2 milliseconds-syncd) 250)
    (check-equal? (send-syncd r2 evaluate-syncd get-times) '(("button" 200) ("button" 100)))))
 
-(define (sampling-tests)
-  (test-case
-   "test get-sampling"
-   ;
-   (wally-clear)
-   (define r1 (new reactive-thing%))
-   ; kind of a stupid always* constraint but it shouldn't require pull sampling
-   (always* (equal? (send r1 image) null))
-   (check-equal? (send r1 get-sampling) '())
-   ;
-   (wally-clear)
-   (define test-always%
-     (class reactive-thing%
-       (inherit seconds image)
-       (super-new [init-image (make-circle)])
-       (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))))
-   (define r2 (new test-always%))
-   (check-equal? (send r2 get-sampling) '(pull))
-   ;
-   (wally-clear)
-   (define test-when%
-     (class reactive-thing%
-       (inherit seconds image)
-       (super-new [init-image (make-circle)])
-       (when (send r3 button-pressed)
-         (void))))
-   (define r3 (new test-when%))
-   (check-equal? (send r3 get-sampling) '(push))
-   (wally-clear)
-   (define test-always-and-when%
-     (class reactive-thing%
-       (inherit seconds image)
-       (super-new [init-image (make-circle)])
-       (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
-       (when #f (void))))
-   (define r4 (new test-always-and-when%))
-   (check-equal? (send r4 get-sampling) '(push pull))))
+; sampling-tests omitted, since get-sampling should be provided by compiled classes
 
 (define compiled-reactive-thing-tests 
   (test-suite 
@@ -205,5 +166,4 @@
    (advance-time-one-when)
    (advance-time-multiple-whens)
    (button-events)
-   (sampling-tests)
    ))

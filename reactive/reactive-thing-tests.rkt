@@ -28,8 +28,9 @@
    (define (get-count) count)
    (define one-when-tester%
      (class reactive-thing%
+       (inherit milliseconds)
        (super-new)
-       (when (equal? (send r milliseconds) 100)
+       (when (equal? (milliseconds) 100)
          (set! count (+ 1 count)))))
 
    (define r (new one-when-tester%))
@@ -56,10 +57,11 @@
    (define (get-times) times)
    (define multi-when-tester%
      (class reactive-thing%
+       (inherit milliseconds)
        (super-new)
-       (when (equal? (send r milliseconds) 100)
+       (when (equal? (milliseconds) 100)
          (set! times (cons (list "when 100" (evaluate (send r milliseconds))) times)))
-       (when (equal? (send r milliseconds) 200)
+       (when (equal? (milliseconds) 200)
          (set! times (cons (list "when 200" (evaluate (send r milliseconds))) times)))))
    
    (define r (new multi-when-tester%))

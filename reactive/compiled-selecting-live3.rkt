@@ -35,7 +35,7 @@
              (set! actual-target (car potential-targets))
              (set! actual-offset (point-minus (mouse-position) (circle-center actual-target)))
              (put-first actual-target my-image)]))
-    (define/override (find-time target)
+    (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       ; get-button-down-event-times
       (let* ([now (send this milliseconds)]
