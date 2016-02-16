@@ -55,6 +55,7 @@
     (define/public (watch)
       (set! running #t)
       (send my-thing watched-by this)
+      ; trying to send this syncd deadlocks ???
       ; (send-syncd my-thing watched-by-syncd this)
       (refresh-helper)
       ; if my-thing wants pull sampling, set up a thread to poll every my-sleep-time seconds
@@ -69,6 +70,7 @@
     (define/public (unwatch)
       (set! running #f)
       (send my-thing unwatched-by this)
+      ; trying to send this syncd deadlocks ???
       ; (send-syncd my-thing unwatched-by-syncd this)
       (send-syncd this refresh-syncd))))
 

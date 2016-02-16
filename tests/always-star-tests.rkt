@@ -105,6 +105,19 @@
    (check-equal? (evaluate y) 10)
    ))
 
+(define (explicit-required-priority-test)
+  (test-case
+   "test providing an explicit priority of required"
+   (wally-clear)
+   (define-symbolic x number?)
+   (always* (equal? x 2) #:priority required)
+   (always* (equal? x 3) #:priority required)
+   (check-exn
+    exn:fail?
+    (lambda () (wally-solve)))
+   ; clear assertions, since they are in an unsatisfiable state at this point
+   (clear-asserts)))
+
 
 (define always-star-tests 
   (test-suite 
@@ -114,4 +127,5 @@
    (assign-always*-required-test)
    (struct-always-set-test)
    (struct-always*-set-test)
+   (explicit-required-priority-test)
    ))

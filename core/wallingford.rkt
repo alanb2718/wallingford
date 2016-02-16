@@ -63,12 +63,12 @@
 ; dynamic version of always (supports re-evaluating the expression each time by wrapping it in a lambda)
 (define-syntax always*
   (syntax-rules ()
-    ((always* e1) (add-always*-helper 'e1 (lambda () e1) #t))
-    ((always* e1 #:priority p) (add-always*-helper 'e1 (soft (lambda () e1) p) #f))))
-(define (add-always*-helper expr fn required?)
-  (if required? 
+    ((always* e1) (add-always*-helper 'e1 (lambda () e1) required))
+    ((always* e1 #:priority p) (add-always*-helper 'e1 (lambda () e1) p ))))
+(define (add-always*-helper expr fn p)
+  (if (= p required) 
       (set! required-constraint-procs (cons fn required-constraint-procs))
-      (set! soft-constraint-procs (cons fn soft-constraint-procs)))
+      (set! soft-constraint-procs (cons (soft fn p) soft-constraint-procs)))
   (set! always*-code (cons expr always*-code)))
 
 (define (stay obj #:priority [p lowest])

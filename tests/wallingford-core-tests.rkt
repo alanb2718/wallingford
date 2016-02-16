@@ -131,6 +131,19 @@
    ; clear assertions, since they are in an unsatisfiable state at this point
    (clear-asserts)))
 
+(define (explicit-required-priority-test)
+  (test-case
+   "test providing an explicit priority of required"
+   (wally-clear)
+   (define-symbolic x number?)
+   (always (equal? x 2) #:priority required)
+   (always (equal? x 3) #:priority required)
+   (check-exn
+    exn:fail?
+    (lambda () (wally-solve)))
+   ; clear assertions, since they are in an unsatisfiable state at this point
+   (clear-asserts)))
+
 (define wallingford-core-tests 
   (test-suite 
    "run general tests for wallingford"
@@ -141,4 +154,5 @@
    (update-test)
    (required-stay-test)
    (unsatisfiable-required-cn-test)
+   (explicit-required-priority-test)
    ))
