@@ -2,15 +2,19 @@
 ; DSL for handling state and updates in Rosette (also a stepping stone toward Constraint Reactive Programming)
 
 ; set debug to #t to print debugging information
-(define debug #t)
+(define debug #f)
 
 (provide always always* stay wally-clear wally-solve always*-code
-         required high medium low lowest current-solution (rename-out [wally-evaluate evaluate])
+         required high medium low lowest current-solution (rename-out [wally-evaluate evaluate]) number?
          ;; temporarily expose these lists for debugging - remove this later
          required-constraints  required-constraint-procs  
          soft-constraints  soft-constraint-procs   required-stays   soft-stays)
 
 (current-bitwidth 32) ; use 32-bit integers to prevent overflow
+
+; export number? as integer?, this can be easily changed to real? if 
+; that is the desired defualt.
+(define number? integer?) 
 
 ; symbolic names for priorities (represented as integers here)
 ; this is a bit hazardous since the update method sums the priority values in
@@ -116,15 +120,16 @@
                                 (if (equal? (soft-target s) old) 0 (soft-priority s))) soft-stays old-soft-stay-vals))
   (define total-penalty (+ (foldl + 0 cn-penalties) (foldl + 0 cn-proc-penalties) (foldl + 0 stay-penalties)))
   (when debug
-    (printf "cn-penalties: ~a\n" (map term->datum cn-penalties))
+    (printf "cn-penalties: ~a\n" cn-penalties)
     (printf "cn-proc-penalties: ~a\n" cn-proc-penalties)
     (printf "stay-penalties: ~a\n" stay-penalties)
-    (printf "total-penalty: ~a\n" (term->datum total-penalty)))
+    (printf "total-penalty: ~a\n" total-penalty))
   
   ; Use iterative deepening to minimize the penalties for the unsatisfied soft constraints and stays.
   ; The parameter keep-going is initially (<= 0 (abs total-penalty)) -- just having it be [keep-going #t]
-  ; ought to work, but without it Rosette sometimes doesn't try to come up with initial values for all
-  ; relevant variables.  (There are some tests in wallingford-core-tests.rkt that illustrate this.)
+  ; can't work if no other constraints are added to the solver. If the only added constraint is #t, 
+  ; Rosette has no basis for assigning values to any variables. There are some tests in 
+  ; wallingford-core-tests.rkt that illustrate this.
   (let minimize ([keep-going (<= 0 (abs total-penalty))])
     (when debug (printf "in minimize - keep-going: ~a\n" (term->datum keep-going)))
     (set! soln (solver (list keep-going))) ; the best solution seen so far.
