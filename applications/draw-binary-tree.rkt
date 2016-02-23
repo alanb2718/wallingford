@@ -6,17 +6,6 @@
 
 (wally-clear)
 
-;; Works with KodKod, but faster with z3
-
-;; (require rosette/solver/kodkod/kodkod)
-;; (current-solver (new kodkod%))
-
-(require rosette/solver/smt/z3)
-(current-solver (new z3%))
-
-;; For up to 4, this is fine, and faster
-(current-bitwidth 10)
-
 (define frame (new frame%
                    [label "Binary Tree Example"]
                    [width 800]
