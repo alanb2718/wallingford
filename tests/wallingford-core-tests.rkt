@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for wallingford core.  These can be run from this file, or from all-tests.rkt
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "../core/wallingford.rkt")
 
 (provide wallingford-core-tests)
@@ -10,7 +10,7 @@
   (test-case
    "simple test of a soft always constraint"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    ; We used to need the following call to solve to give x a value in the current solution -
    ; otherwise Rosette would stop without finding a solution.  The initial value for the
    ; keep-going parameter in wally-solve in wallingford.rkt now works around this problem.
@@ -116,7 +116,7 @@
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define (unsatisfiable-required-cn-test)
   (test-case
@@ -129,7 +129,7 @@
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define (explicit-required-priority-test)
   (test-case
@@ -142,17 +142,19 @@
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define wallingford-core-tests 
-  (test-suite 
+  (test-suite+ ; Rosette specific test-suite that will clear relevant rosette state upon finishing 
    "run general tests for wallingford"
    (soft-cn-test)
-   (cn-priorities-test)
-   (cn-count-test)
-   (simultaneous-eqn-test)
-   (update-test)
-   (required-stay-test)
-   (unsatisfiable-required-cn-test)
-   (explicit-required-priority-test)
+   ;(cn-priorities-test)
+   ;(cn-count-test)
+   ;(simultaneous-eqn-test)
+   ;(update-test)
+   ;(required-stay-test)
+   ;(unsatisfiable-required-cn-test)
+   ;(explicit-required-priority-test)
    ))
+
+(time (run-tests wallingford-core-tests))
