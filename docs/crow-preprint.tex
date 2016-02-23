@@ -1,25 +1,13 @@
 % position paper for CROW workshop 2016
 
-\documentclass[reprint]{sigplanconf}
+\documentclass{sigplanconf}
 % numbers       To obtain numeric citation style instead of author/year.
 
 \usepackage{amsmath,url}
 
 \begin{document}
-\toappear{Permission to make digital or hard copies of all or part of
-  this work for personal or classroom use is granted without fee
-  provided that copies are not made or distributed for profit or
-  commercial advantage and that copies bear this notice and the full
-  citation on the first page. Copyrights for components of this work
-  owned by others than the author(s) must be honored. Abstracting with
-  credit is permitted. To copy otherwise, or republish, to post on
-  servers or to redistribute to lists, requires prior specific
-  permission and/or a fee. Request permissions from
-  Permissions@acm.org.
-  Copyright is held by the owner/author(s). Publication rights
-  licensed to ACM. \\
-  ACM 978-1-4503-4033-5/16/03\$15.00
-  DOI: http://dx.doi.org/10.1145/2892664.2892667 \\}
+\toappear{\normalsize To appear, Proceedings of the Constrained and
+  Reactive Objects Workshop (CROW'16), March 15, 2016, M\'{a}laga, Spain}
 
 \sloppy
 
@@ -57,7 +45,7 @@ Racket.  This short paper is a snapshot of work-in-progress on the system.
 
 \keywords{Object constraint languages, reactive programming, Rosette}
 
-\section{Introduction}
+section{Introduction}
 
 Wallingford is an experimental constraint reactive programming
 language, which integrates constraints with reactive programming, in a
@@ -142,6 +130,8 @@ between instances of primitive types and of value classes, for which object
 identity is not significant and that don't need to be stored on the heap,
 and instances of classes for which identity is significant and that are
 stored on the heap.  Here is a simple example using just primitive types.
+
+\newpage
 
 \begin{verbatim}
 x := 3;
