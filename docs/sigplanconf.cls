@@ -600,10 +600,8 @@
         \@toappear
       \fi
       \if \@reprint
-        \noindent Reprinted from \@conferencename,
-        \@proceedings,
-        \@conferenceinfo,
-        pp.~\number\thepage--\pageref{sigplanconf@finalpage}.\par
+        \noindent \ 
+\par
       \fi}}%
   \end@float}
 
