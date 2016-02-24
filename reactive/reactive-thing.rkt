@@ -89,7 +89,7 @@
                       ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
                       (solve (assert keep-going)) ; the best solution seen so far.
                       (search (< symbolic-time (evaluate symbolic-time)))))
-                  (clear-asserts)
+                  (clear-asserts!)
                   ; symbolic-time still retains its value in the solution even though we are clearing asserts
                   (evaluate symbolic-time)]))
     
