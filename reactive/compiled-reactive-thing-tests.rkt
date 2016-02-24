@@ -167,3 +167,5 @@
    (advance-time-multiple-whens)
    (button-events)
    ))
+
+(time (run-tests compiled-reactive-thing-tests))
