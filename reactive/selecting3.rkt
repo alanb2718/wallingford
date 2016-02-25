@@ -1,6 +1,7 @@
 #lang s-exp rosette
 ; Example of selecting objects.  There are three circles and we select one
 (require "../applications/geothings.rkt")
+(require "../core/wallingford.rkt")
 (require "reactive.rkt")
 
 ; put item as the first element in the list referred to by the box things
