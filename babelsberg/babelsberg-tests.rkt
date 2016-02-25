@@ -1,14 +1,14 @@
 #lang s-exp rosette
 ;; unit tests for babelsberg additions to the wallingford core
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "babelsberg.rkt")
 
 (define (initialize-then-update-test)
   (test-case
    "test initialize"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (wally-set! x 3)
    (check-equal? (evaluate x) 3)
    (wally-set! x (+ x 2))
@@ -18,7 +18,7 @@
   (test-case
    "test two separate number vars"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (stay x)
    (stay y)
    (wally-set! x 3)
@@ -125,7 +125,7 @@
   (test-case
    "test1"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (wally-set! x 3)
    (check-equal? (evaluate x) 3)
    (wally-set! x 4)
@@ -137,7 +137,7 @@
   (test-case
    "test4"
    (wally-clear)
-   (define-symbolic x y z number?)
+   (define-symbolic x y z integer?)
    (wally-set! x 0)
    (wally-set! y 0)
    (wally-set! z 0)
@@ -152,7 +152,7 @@
   (test-case
    "test5"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (wally-set! x 5)
    (always (<= x 10))
    ; the RackUnit exception handler test doesn't play well with Rosette,
@@ -162,7 +162,7 @@
      (wally-set! x (+ x 15)))
    ; clear assertions, since they are in an unsatisfiable state at this point
    (check-true triggered)
-   (clear-asserts)))
+   (clear-asserts!)))
 
 ; This is a bit different from the test in the report.  If we just share
 ; records in the Wallingford version of Babelsberg, they will be aliased.
@@ -170,10 +170,10 @@
 (define (test12)
   (test-case
    "test12"
-   (symbolic-struct rec ([x number?] [y number?]))
+   (symbolic-struct rec ([x integer?] [y integer?]))
    (wally-clear)
    (wally-define-symbolic p q rec?)
-   (wally-define-symbolic a number?)
+   (wally-define-symbolic a integer?)
    (stay (rec-x p))
    (stay (rec-y p))
    (stay a)
@@ -192,7 +192,7 @@
    (check-equal? (evaluate q) (rec 100 20))))
 
 (define babelsberg-tests 
-  (test-suite 
+  (test-suite+ 
    "run tests for babelsberg extensions to wallingford"
    (initialize-then-update-test)
    (two-numbers-test)
