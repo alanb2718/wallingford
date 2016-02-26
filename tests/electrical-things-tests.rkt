@@ -1,6 +1,6 @@
 #lang s-exp rosette
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/electrical-things.rkt")
 
@@ -16,7 +16,7 @@
    (connect (list (battery-minus b) (resistor-lead2 r) g))
    (connect (list (battery-plus b) (resistor-lead1 r)))
    (wally-solve)
-   (check-equal? (evaluate (lead-current (battery-plus b))) 2)))
+   (check equal? (evaluate (lead-current (battery-plus b))) 2)))
 
 (define (voltage-divider-test)
   (test-case
@@ -30,8 +30,8 @@
    (connect (list (battery-plus b) (resistor-lead1 r1)))
    (connect (list (resistor-lead2 r1) (resistor-lead1 r2)))
    (wally-solve)
-   (check-equal? (evaluate (lead-current (battery-plus b))) 2)
-   (check-equal? (evaluate (lead-voltage (resistor-lead2 r1))) 20)))
+   (check equal? (evaluate (lead-current (battery-plus b))) 2)
+   (check equal? (evaluate (lead-voltage (resistor-lead2 r1))) 20)))
 
 (define (parallel-resistors-test)
   (test-case
@@ -44,7 +44,7 @@
    (connect (list (battery-minus b) (resistor-lead2 r1) (resistor-lead2 r2) g))
    (connect (list (battery-plus b) (resistor-lead1 r1) (resistor-lead1 r2)))
    (wally-solve)
-   (check-equal? (evaluate (lead-current (battery-plus b))) 2.5)))
+   (check equal? (evaluate (lead-current (battery-plus b))) 2.5)))
 
 (define (battery-resistor-changing-voltage-resistance-test)
   (test-case
@@ -56,22 +56,22 @@
    (connect (list (battery-minus b) (resistor-lead2 r) g))
    (connect (list (battery-plus b) (resistor-lead1 r)))
    (assert (equal? (battery-internal-voltage b) 20))
-   (assert (equal? (resistor-resistance r) 10))
+   (assert (equal? (resistor-resistance r) 10)) 
    (wally-solve)
-   (check-equal? (evaluate (lead-current (battery-plus b))) 2)
+   (check equal? (evaluate (lead-current (battery-plus b))) 2)
    ; now solve for the resistance
    (assert (equal? (battery-internal-voltage b) 12))
    (assert (equal? (lead-current (battery-plus b)) 3))
    (wally-solve)
-   (check-equal? (evaluate (resistor-resistance r)) 4)))
+   (check equal? (evaluate (resistor-resistance r)) 4)))
 
 (define electrical-things-tests 
-  (test-suite 
+  (test-suite+ 
    "run all electrical things tests"
    (battery-resistor-fixed-voltage-resistance-test)
    (voltage-divider-test)
-   (printf "skipping parallel-resistors-test (probably needs support for reals to pass)\n")
-   ; (parallel-resistors-test)
-   (printf "skipping battery-resistor-changing-voltage-resistance-test (probably needs support for reals to pass)\n")
-   ; (battery-resistor-changing-voltage-resistance-test)
+   (parallel-resistors-test)
+   (battery-resistor-changing-voltage-resistance-test)
    ))
+
+(time (run-tests electrical-things-tests))

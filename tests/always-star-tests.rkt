@@ -1,6 +1,6 @@
 #lang s-exp rosette
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "../core/wallingford.rkt")
 
 (provide always-star-tests)
@@ -11,7 +11,7 @@
   (test-case
    "test reassiging a variable (should leave the constraint on the old contents)"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (always (equal? x 3) #:priority low)
    (always (equal? y 4) #:priority high)
    (wally-solve)
@@ -29,7 +29,7 @@
   (test-case
    "test reassiging a variable using always* (constraint should apply to new binding)"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (always* (equal? x 3) #:priority low)
    (always* (equal? y 4) #:priority high)
    (wally-solve)
@@ -47,7 +47,7 @@
   (test-case
    "test reassiging a variable using a required always* (mostly to test the optional priority parameter)"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (always* (equal? x 3) #:priority low)
    (always* (equal? y 4))
    (wally-solve)
@@ -67,7 +67,7 @@
   (test-case
    "test setting a field of a mutable struct"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (define s (test-struct x))
    (always (equal? x 3) #:priority low)
    (always (equal? y 4) #:priority low)
@@ -88,7 +88,7 @@
   (test-case
    "test setting a field of a mutable struct"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (define s (test-struct x))
    (always* (equal? x 3) #:priority low)
    (always* (equal? y 4) #:priority low)
@@ -109,18 +109,18 @@
   (test-case
    "test providing an explicit priority of required"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always* (equal? x 2) #:priority required)
    (always* (equal? x 3) #:priority required)
    (check-exn
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 
 (define always-star-tests 
-  (test-suite 
+  (test-suite+ 
    "run always vs always* tests"
    (assign-always-test)
    (assign-always*-test)
@@ -129,3 +129,5 @@
    (struct-always*-set-test)
    (explicit-required-priority-test)
    ))
+
+(time (run-tests always-star-tests))

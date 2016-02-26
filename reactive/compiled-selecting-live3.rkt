@@ -1,5 +1,6 @@
 #lang s-exp rosette
 ; hand compiled code selecting-live3.rkt
+(require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")
 (require "compiled-reactive-thing.rkt")

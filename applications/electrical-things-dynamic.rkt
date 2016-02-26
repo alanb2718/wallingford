@@ -56,7 +56,7 @@
   (always* (equal? (- (node-voltage (lead-node lead2)) (node-voltage (lead-node lead1))) (* resistance (lead-current lead1))))
   (always* (equal? 0 (+ (lead-current lead1) (lead-current lead2))))
   (unless (null? r) (always (equal? resistance r)))
-  (resistor lead1 lead2 r))
+  (resistor lead1 lead2 resistance))
 
 (define (make-ground)
   (define ld (make-lead))

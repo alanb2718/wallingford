@@ -1,6 +1,7 @@
 #lang s-exp rosette
 ; Example of selecting objects.  There are three circles and we select one.
-; The list of potential targets is stored in a variable, rather than being a procedure call.  This is *really* slow.
+; The list of potential targets is stored in a variable, rather than being a procedure call.  
+; This results in *non-linear constraints* which causes z3 to return 'unknown' and crash.
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")

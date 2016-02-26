@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for wallingford core.  These can be run from this file, or from all-tests.rkt
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "../core/wallingford.rkt")
 
 (provide wallingford-core-tests)
@@ -10,7 +10,7 @@
   (test-case
    "simple test of a soft always constraint"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    ; We used to need the following call to solve to give x a value in the current solution -
    ; otherwise Rosette would stop without finding a solution.  The initial value for the
    ; keep-going parameter in wally-solve in wallingford.rkt now works around this problem.
@@ -23,7 +23,7 @@
   (test-case
    "test that wally-solve is returning a solution to the required constraints"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 2))
    (let ([soln (wally-solve)])
      (check-equal? (evaluate x soln) 2))))
@@ -32,7 +32,7 @@
   (test-case
    "test that wally-solve is returning a solution to the soft constraints"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 2) #:priority low)
    (let ([soln (wally-solve)])
      (check-equal? (evaluate x soln) 2))))
@@ -41,7 +41,7 @@
   (test-case
    "test always constraints with different priorities"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 2) #:priority low)
    (always (equal? x 3) #:priority high)
    (wally-solve)
@@ -54,7 +54,7 @@
   (test-case
    "test that 2 low priority constraints are satisfied in preference to 1 low priority constraint"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 5) #:priority low)
    (always (equal? x 7) #:priority low)
    (always (equal? x 7) #:priority low)
@@ -70,7 +70,7 @@
   (test-case
    "test solving simultaneous linear equations with different priorities"
    (wally-clear)
-   (define-symbolic x y number?)
+   (define-symbolic x y integer?)
    (always (equal? (+ (* 2 x) (* 3 y)) 8) #:priority medium)
    (always (equal? (+ x y) 3) #:priority medium)
    (always (equal? (+ x (* 7 y)) 0) #:priority low)
@@ -82,7 +82,7 @@
   (test-case
    "initialize x, y, z; then change y, then change x"
    (wally-clear)
-   (define-symbolic x y z number?)
+   (define-symbolic x y z integer?)
    (define xyz (list x y z))  ; to simplify checks
    (always (equal? z (+ x y)))
    (stay x)  ; this should default to lowest priority
@@ -106,7 +106,7 @@
   (test-case
    "check that required stays are in fact required"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (assert (equal? x 5))
    (wally-solve)
    (stay x #:priority required)
@@ -116,36 +116,36 @@
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define (unsatisfiable-required-cn-test)
   (test-case
    "an unsatisfiable required constraint should raise an exception"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 2))
    (always (equal? x 3))
    (check-exn
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define (explicit-required-priority-test)
   (test-case
    "test providing an explicit priority of required"
    (wally-clear)
-   (define-symbolic x number?)
+   (define-symbolic x integer?)
    (always (equal? x 2) #:priority required)
    (always (equal? x 3) #:priority required)
    (check-exn
     exn:fail?
     (lambda () (wally-solve)))
    ; clear assertions, since they are in an unsatisfiable state at this point
-   (clear-asserts)))
+   (clear-asserts!)))
 
 (define wallingford-core-tests 
-  (test-suite 
+  (test-suite+ ; Rosette specific test-suite that will clear relevant rosette state upon finishing 
    "run general tests for wallingford"
    (soft-cn-test)
    (cn-priorities-test)
@@ -156,3 +156,5 @@
    (unsatisfiable-required-cn-test)
    (explicit-required-priority-test)
    ))
+
+(time (run-tests wallingford-core-tests))

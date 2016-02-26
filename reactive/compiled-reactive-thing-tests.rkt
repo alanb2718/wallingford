@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for compiled-reactive-thing% -- these should be parallel to the tests for reactive-thing%
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 ; (require racket/gui/base)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
@@ -160,10 +160,12 @@
 ; sampling-tests omitted, since get-sampling should be provided by compiled classes
 
 (define compiled-reactive-thing-tests 
-  (test-suite 
+  (test-suite+ 
    "run tests for compiled-reactive-thing"
    (advance-time-no-whens)
    (advance-time-one-when)
    (advance-time-multiple-whens)
    (button-events)
    ))
+
+(time (run-tests compiled-reactive-thing-tests))

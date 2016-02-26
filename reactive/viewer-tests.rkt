@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for viewer%.  Run these from all-tests.rkt
 
-(require rackunit rackunit/text-ui)
+(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require racket/string)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
@@ -104,8 +104,10 @@
    ))
 
 (define viewer-tests 
-  (test-suite 
+  (test-suite+ 
    "run tests for viewer"
    (pulser-test)
    ; (colored-flipper-test)
    ))
+
+(time (run-tests viewer-tests))

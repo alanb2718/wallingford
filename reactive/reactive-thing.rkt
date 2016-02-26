@@ -76,20 +76,24 @@
     (define/override (find-time mytime target)
       ; if there aren't any when statements, just return the target time, otherwise solve for the time to jump to
       (cond [(null? when-holders) target]
-            [else (assert (> symbolic-time mytime))
+            [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
+                  (assert (> symbolic-time mytime))
                   (assert (or (equal? symbolic-time target)
-                              (and (< symbolic-time target) (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
-                  ; in wallingford.rkt we needed to hack around the start condition:
-                  ;     (let minimize ([keep-going (<= 0 (abs total-penalty))])
+                              (and (< symbolic-time target) 
+                                   (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
+                  (solver-add solver (asserts))
                   (let search ([keep-going #t])
-                    (with-handlers ([exn:fail? void])    ; if unsat we are done: (current-solution) holds the minimum value for my-time
-                      ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-                      ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
-                      ; if the value of this expression is true then one of the 'when' conditions holds
-                      ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
-                      (solve (assert keep-going)) ; the best solution seen so far.
-                      (search (< symbolic-time (evaluate symbolic-time)))))
-                  (clear-asserts)
+                    ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
+                    ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
+                    ; if the value of this expression is true then one of the 'when' conditions holds
+                    ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
+                    (solver-add solver (list keep-going))
+                    (define sol (solver-check solver))
+                    (cond [(sat? sol) ; if unsat we are done: (current-solution) holds the minimum value for my-time
+                           (current-solution sol) ; the best solution seen so far.
+                           (search (< symbolic-time (evaluate symbolic-time)))]))
+                  (clear-asserts!)
+                  (solver-clear solver)
                   ; symbolic-time still retains its value in the solution even though we are clearing asserts
                   (evaluate symbolic-time)]))
     
@@ -101,6 +105,7 @@
         ; make sure we haven't gone by the target time already - if we have, don't do anything
         (cond [(< mytime target)
                (let ([next-time (find-time mytime target)])
+                 ;(printf "next-time: ~a\n" next-time)
                  (assert (equal? symbolic-time next-time))
                  ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
                  (define save-solution mysolution)
@@ -118,5 +123,8 @@
                  (cond [(not (null? active-whens))
                         (send this notify-watchers)])
                  ; if we didn't get to the target try again
-                 (if (< next-time target) (advance-time-helper target) (void)))])))))
+                 (cond [(< next-time target) 
+                        (advance-time-helper target)]))])))))
+
+
     

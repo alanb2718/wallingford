@@ -34,7 +34,7 @@
   (always (equal? 0 (+ (lead-current lead1) (lead-current lead2))))
   ; if the resistance argument is present, fix the resistance of this resistor
   (unless (null? r) (always (equal? resistance r)))
-  (resistor lead1 lead2 r))
+  (resistor lead1 lead2 resistance)) 
 
 (define (make-ground)
   (define ld (make-lead))
