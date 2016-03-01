@@ -4,36 +4,37 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "abstract-reactive-thing.rkt")
+; make Racket's version of when available also
+(require (only-in racket [when racket-when]))
 
-(provide when reactive-thing%)
+(provide when racket-when reactive-thing%)
 
-; struct to hold whens -- the condition and body are both thunks (anonymous lambdas)
-(struct when-holder (condition body) #:transparent)
-; Definition of 'when' macro.
-; Note that this overrides the built-in Racket 'when' - but easy to just use 'cond' for that.
-; 'when' should be used within an instance of reactive-thing or a subclass since it references 'this'
+; Definition of 'when' macro.  'when' should be used within an instance of reactive-thing or a subclass
+; since it references 'this'.
+; Note that this overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
   (send this add-when (when-holder (lambda () test) (lambda () e ...))))
+; struct to hold whens -- the condition and body are both thunks (anonymous lambdas)
+(struct when-holder (condition body) #:transparent)
 
 (define reactive-thing%
   (class abstract-reactive-thing%
+    (super-new)
     (define when-holders '())  ; list of whens
     ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to
-    ; time-at-startup.  Due to current Rosette limitations this is an integer rather than a float or real,
-    ; although the semantics should be that time is continuous.  (If we can make it a real, it might as
-    ; well be in seconds.)
-    (define-symbolic* symbolic-time number?)
-    ; start time out at 0
-    (assert (equal? symbolic-time 0))
-    ; mysolution is the current solution (this is stored explicitly since Rosette has a
-    ; different current-solution for different threads)
-    (define mysolution (wally-solve))
+    ; time-at-startup.
+    ;
+    ; hack of desperation - re-initialize the current solution in this thing's thread
+    (send-syncd this evaluate-syncd (lambda () (send this init-current-solution)))
+    (define-symbolic* symbolic-time real?)
+    ; start time out at 0 (again, as a hack of desperation, do this in the thread)
+     (send-syncd this evaluate-syncd (lambda () (assert (equal? symbolic-time 0))))
+    ;(send this solve)
+    (send-syncd this evaluate-syncd (lambda () (send this solve)))
     (stay symbolic-time)
-    
-    (super-new)
-        
-    (define/public (previous x)
-      (evaluate x mysolution))
+    ; to implement previous, we just need to evaluate the expression in the current (i.e. old) solution
+    (define/public (previous expr)
+      (send this wally-evaluate expr))
     
     ; sampling says how to sample.  It starts out as #f, and then is set the first time the (get-sampling)
     ; function is called.  After that it is one of '(push) '(pull) '(push pull) or '()
@@ -44,7 +45,7 @@
       (cond [(not sampling)
              (set! sampling null)
              ; if any of the always* constraints include a temporal reference, sampling should include pull
-             (cond [(includes-one-of always*-code '((seconds) (milliseconds)))
+             (cond [(includes-one-of (send this get-always*-code) '((seconds) (milliseconds)))
                     (set! sampling (cons 'pull sampling))])
              ; if there are when constraints, sampling should include push
              (cond [(not (null? when-holders))
@@ -64,10 +65,10 @@
     (define/override (milliseconds)
       symbolic-time)
     (define/override (milliseconds-evaluated)
-      (evaluate symbolic-time mysolution))
+      (send this wally-evaluate symbolic-time))
     
     (define/override (concrete-image)
-      (evaluate (send this image) mysolution))
+      (send this wally-evaluate (send this image)))
 
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' condition true.  If there aren't any values between the current time and the target that makes
@@ -90,12 +91,12 @@
                     (solver-add solver (list keep-going))
                     (define sol (solver-check solver))
                     (cond [(sat? sol) ; if unsat we are done: (current-solution) holds the minimum value for my-time
-                           (current-solution sol) ; the best solution seen so far.
-                           (search (< symbolic-time (evaluate symbolic-time)))]))
+                           (send this update-current-solution sol) ; the best solution seen so far.
+                           (search (< symbolic-time (send this wally-evaluate symbolic-time)))]))
                   (clear-asserts!)
                   (solver-clear solver)
                   ; symbolic-time still retains its value in the solution even though we are clearing asserts
-                  (evaluate symbolic-time)]))
+                  (send this wally-evaluate symbolic-time)]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
@@ -104,20 +105,19 @@
       (let ([mytime (send this milliseconds-evaluated)])
         ; make sure we haven't gone by the target time already - if we have, don't do anything
         (cond [(< mytime target)
-               (let ([next-time (find-time mytime target)])
-                 ;(printf "next-time: ~a\n" next-time)
+               (let ([old-solution (send this get-current-solution)]
+                     [next-time (find-time mytime target)])
                  (assert (equal? symbolic-time next-time))
                  ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
-                 (define save-solution mysolution)
-                 (set! mysolution (wally-solve mysolution))
-                 (define active-whens (filter (lambda (w) (evaluate ((when-holder-condition w)) mysolution))
+                 (send this solve)
+                 (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w))))
                                               when-holders))
                  ; assert the constraints in all of the bodies of the active whens and solve again
                  (for-each (lambda (w) ((when-holder-body w))) active-whens)
-                 ; need to re-assert that symbolic-time equals next-time since wally-solve clears assertions
+                 ; need to re-assert that symbolic-time equals next-time since solve clears assertions
                  (assert (equal? symbolic-time next-time))
-                 ; update mysolution starting with the saved-solution, so that 'previous' works correctly
-                 (set! mysolution (wally-solve save-solution))
+                 ; now update the current solution starting with old-solution, so that 'previous' works correctly
+                 (send this solve old-solution)
                  ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
                  ; have changed but that's ok -- we just don't want to miss telling them if it did.)
                  (cond [(not (null? active-whens))
@@ -125,6 +125,3 @@
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))))
-
-
-    

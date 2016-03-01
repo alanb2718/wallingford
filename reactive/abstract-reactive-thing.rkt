@@ -23,15 +23,14 @@
     (thread-send (send thing get-thread) (list 'msg c args ...))
     (channel-get c)))
 
-; all times are relative to the time the program is started, to keep the number of bits down
+; all times are relative to the time the program is started
 (define time-at-startup (current-milliseconds))
 
 (define abstract-reactive-thing%
-  (class object%
-    ; initialization argument:
-    ;   image is a graphical object that is returned in response to the 'get-image' message
-    (init [init-image null])
-    (define myimage init-image)
+  (class thing%
+    (super-new)
+    ; myimage is a graphical object that is returned in response to the 'get-image' message
+    (define myimage null)
     ; viewers on this thing
     (define watchers (mutable-set))
     ; alert is either a thread for the current alert, or null if none
@@ -51,12 +50,10 @@
                               ['(exit) (printf "exiting \n")]
                               [_ (send this match-thread-receive r)
                                  (loop)]))))))
-    (super-new)
     
     ; Match the message received by mythread and do the appropriate action.  If overridden
     ; in a subclass, the overriding method should also invoke this method using super.
     ; Messages are lists consisting of the message name (a symbol) followed by any arguments.
-    ; *** TODO: clean these up to work with compiled version also ***
     (define/public (match-thread-receive r)
       (match r
         [(list 'show dc)
@@ -89,14 +86,14 @@
          ; to avoid cycles, assume the button down event occurred at least 1 millisecond after
          ; the thing's current internal time
          (set! button-down-event-times
-               (cons (max (+ 1 (milliseconds-evaluated)) (if (null? event-time) (current-clock-time) event-time))
+               (cons (max (+ 1 (send this milliseconds-evaluated)) (if (null? event-time) (current-clock-time) event-time))
                      button-down-event-times))
          (set! button-down-locations (cons (point mx my) button-down-locations))
          ; revise when to wake up next if need be (could be wake up right now)
          ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
          (cond [(not (set-empty? watchers)) (set-alert-helper)])]
         [(list 'milliseconds-syncd ch)
-         (channel-put ch (milliseconds-evaluated))]
+         (channel-put ch (send this milliseconds-evaluated))]
         [(list 'set-alert)
          (set-alert-helper)]
         ; evaluate thunk for side effects only (no syncronization)
@@ -140,15 +137,14 @@
     (define/public (milliseconds-evaluated)
       (send this milliseconds))
     (define/public (seconds)
-      (exact->inexact (/ (milliseconds-evaluated) 1000.0)))
+      (exact->inexact (/ (send this milliseconds-evaluated) 1000.0)))
     
     ; Accessing the thing's image.  concrete-image should be overridden if the image needs to be evaluated before drawing it
     (define/public (image) myimage)
     (define/public (concrete-image) myimage)
-    
-    ; methods relevant for compiled things -- allow subclasses to set a new image, or access button-down-event-times
-    (define/public (update-myimage newimage)
+    (define/public (set-image! newimage)
       (set! myimage newimage))
+    
     (define/public (get-button-down-event-times)
       button-down-event-times)
     
@@ -194,7 +190,7 @@
       ; we could use that as the first value, and then avoid setting up a thread at all.  (This seems a bit
       ; cleaner and also like it would make zero difference in practice.)
       (terminate-old-alert)
-      (let* ([mytime (milliseconds-evaluated)]
+      (let* ([mytime (send this milliseconds-evaluated)]
              [in-a-week (+ mytime (* 1000 60 60 24 7))] ; a week from now
              [target (find-time mytime in-a-week)]
              [seconds-to-sleep  (/ (- target (current-clock-time)) 1000.0)])

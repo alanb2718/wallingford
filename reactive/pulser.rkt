@@ -4,5 +4,5 @@
 (require "pulser-class.rkt")
 
 ; make a new pulser and a viewer on it:
-(wally-clear)
-(make-viewer (new pulser%) #:title "Pulser")
+(define p (new pulser%))
+(make-viewer p #:title "Pulser")

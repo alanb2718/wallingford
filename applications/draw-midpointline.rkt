@@ -4,11 +4,11 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 
-(wally-clear)
-(define mpl (make-midpointline-with-stays))
+(define picture (new thing%))
+(define mpl (make-midpointline-with-stays picture))
 ; initialize the line's location
 (assert (equal? (midpointline-line mpl) (line (point 10 10) (point 200 250))))
-(wally-solve)
+(send picture solve)
 
 (define frame (new frame%
                    [label "Moving one endpoint of a midpoint line"]
@@ -21,7 +21,7 @@
                    (lambda (canvas dc)
                      (send dc set-pen "black" 1 'solid)
                      (send dc set-brush "black" 'solid)
-                     (showthing (evaluate mpl) dc))]))
+                     (showthing (send picture wally-evaluate mpl) dc))]))
 (define dc (send canv get-dc))
 
 (send frame show #t)
@@ -30,6 +30,6 @@
   (let ((x (+ i 10))
         (y (+ (* i 4) 20)))
     (assert (equal? (line-end1 (midpointline-line mpl)) (point x y)))
-    (wally-solve)
+    (send picture solve)
     (send dc clear)
-    (showthing (evaluate mpl) dc)))
+    (showthing (send picture wally-evaluate mpl) dc)))

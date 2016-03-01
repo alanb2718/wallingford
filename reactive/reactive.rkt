@@ -11,4 +11,4 @@
 
 ; stuff from other modules, re-provided here to avoid more requires in demos
 (provide when reactive-thing% send-thing send-syncd make-viewer
-         make-circle circle-radius circle-color always always* color wally-clear)
+         make-circle circle-radius circle-color always always* color)

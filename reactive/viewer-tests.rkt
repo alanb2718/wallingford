@@ -104,7 +104,7 @@
    ))
 
 (define viewer-tests 
-  (test-suite+ 
+  (test-suite+
    "run tests for viewer"
    (pulser-test)
    ; (colored-flipper-test)

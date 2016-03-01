@@ -23,40 +23,40 @@
 
 ; functions to make symbolic objects
 (define (make-point)
-  (define-symbolic* x y number?)
+  (define-symbolic* x y real?)
   (point x y))
 (define (make-line)
   (line (make-point) (make-point)))
 
 ; make-circle includes default values (if this works OK, add this to other functions as well)
-(define (make-circle [initial-value (circle (point 150 150) 50 (color "blue"))])
-  (define-symbolic* r number?)
+(define (make-circle owner [initial-value (circle (point 150 150) 50 (color "blue"))])
+  (define-symbolic* r real?)
   (define-symbolic* c color?)
   (define circ (circle (make-point) r c))
   ; give it a default value
   (assert (equal? circ initial-value))
-  (stay (circle-radius circ))
-  (stay (circle-center circ))
-  (stay (circle-color circ))
-  (wally-solve)
+  (stay (circle-radius circ) #:owner owner)
+  (stay (circle-center circ) #:owner owner)
+  (stay (circle-color circ) #:owner owner)
+  (send owner solve)
   circ)
 
-(define (make-midpointline)
+(define (make-midpointline owner)
   (define line1 (make-line))
   (define midpoint (make-point))
-  (always (equal? midpoint (point-scale (point-plus (line-end1 line1) (line-end2 line1)) 0.5)))
+  (always (equal? midpoint (point-scale (point-plus (line-end1 line1) (line-end2 line1)) 0.5)) #:owner owner)
   (midpointline line1 midpoint))
 
-(define (make-midpointline-with-stays)
+(define (make-midpointline-with-stays owner)
   (define line1 (make-line))
   (define midpoint (make-point))
   ; the midpoint constraint and stays on the endpoints of the line
   ; We want to put the stays on the two endpoints of the line rather than the line as a whole, so 
   ; that we prefer solutions that leave one endpoint where it was even if we need to move the other.
   ; And we don't put the stays all the way down on the x and y values, to avoid the split stay problem.
-  (always (equal? midpoint (point-scale (point-plus (line-end1 line1) (line-end2 line1)) 0.5)))
-  (stay (line-end1 line1) #:priority low)
-  (stay (line-end2 line1) #:priority low)
+  (always (equal? midpoint (point-scale (point-plus (line-end1 line1) (line-end2 line1)) 0.5)) #:owner owner)
+  (stay (line-end1 line1) #:priority low #:owner owner)
+  (stay (line-end2 line1) #:priority low #:owner owner)
   ; we could put a stay on the midpoint but it's not actually needed
   (midpointline line1 midpoint))
 

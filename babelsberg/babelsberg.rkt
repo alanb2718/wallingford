@@ -81,7 +81,7 @@
 
 ; Macro to define a new symbolic structure.  The format is the name of the structure,
 ; followed by a list of field names and type predicates, e.g.
-;   (symbolic-struct point ([x number?] [y number?]))
+;   (symbolic-struct point ([x real?] [y real?]))
 ; this is a subtype of symbolicstruct so that we can test for these
 (define-syntax-rule (symbolic-struct name ((n pred) ...))
   (begin
@@ -150,7 +150,7 @@
   (syntax-rules ()
     ((update var expr)
      (let ([value (wally-evaluate expr)])
-       (cond [(or (number? var) (boolean? var) (symbolicstruct? var)) (assert (equal? var value))]
+       (cond [(or (real? var) (boolean? var) (symbolicstruct? var)) (assert (equal? var value))]
              [else (set! var expr) (solve-id-constraints (syntax var) expr)])
        (wally-solve)))))
   

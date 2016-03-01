@@ -4,7 +4,7 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 
-(wally-clear)
+(define picture (new thing%))
 
 (define frame (new frame%
                    [label "Binary Tree Example"]
@@ -35,8 +35,8 @@
   (let ([p (make-point)])
     (set! tree-points (cons p tree-points))
     ;; Dirty Hack to make sure values are nice
-    (always (<= 0 (point-x p)))
-    (always (<= 0 (point-y p)))
+    (always (<= 0 (point-x p)) #:owner picture)
+    (always (<= 0 (point-y p)) #:owner picture)
     ;; End Hack
     p))
 
@@ -68,38 +68,38 @@
 
     ; 1. separation of bottom points (by 2x x-spacing)
     (always (<= (+ branch-x-distrib (point-x lp))
-                (point-x rp)))
+                (point-x rp)) #:owner picture)
     (always (equal? (+ branch-x-distrib (point-x lp))
                     (point-x rp))
-            #:priority low)
+            #:priority low #:owner picture)
 
     ; 2. bottom points are equally distributed around top point
     (always (equal? (- (point-x tp) (point-x lp))
-                    (- (point-x rp) (point-x tp))))
+                    (- (point-x rp) (point-x tp))) #:owner picture)
 
     ; 3. Top point is always 30 above left and right point
     (always (equal? (+ branch-y-spacing (point-y tp))
-                    (point-y lp)))
+                    (point-y lp)) #:owner picture)
     (always (equal? (+ branch-y-spacing (point-y tp))
-                    (point-y rp)))
+                    (point-y rp)) #:owner picture)
 
     (when lt
       ; 7. Rightmost point in left subtree is left of top point
       (always (<= (+ branch-x-spacing (point-x (branch-rightmost lt)))
-                  (point-x tp)))
+                  (point-x tp)) #:owner picture)
       (always (equal? (+ branch-x-spacing (point-x (branch-rightmost lt)))
                       (point-x tp))
-              #:priority low)
+              #:priority low #:owner picture)
       )
 
 
     (when rt
       ; 9. Leftmost point in right subtree is right of top point
       (always (<= (+ branch-x-spacing (point-x tp))
-                  (point-x (branch-leftmost rt))))
+                  (point-x (branch-leftmost rt))) #:owner picture)
       (always (equal? (+ branch-x-spacing (point-x tp))
                       (point-x (branch-leftmost rt)))
-              #:priority low)
+              #:priority low #:owner picture)
       )
 
     b))
@@ -120,7 +120,7 @@
 
 
 (define (show-tree bt)
-  (show-tree-recur (evaluate bt)))
+  (show-tree-recur (send picture wally-evaluate bt)))
 
 (define (show-tree-recur bt)
   (let ([lt (branch-lt bt)]
@@ -137,7 +137,7 @@
 (define test (binary-tree 4 300 50))
 
 (printf "solving\n")
-(time (wally-solve))
+(time (send picture solve))
 (printf "solved\n")
 
 (define (showtest)
