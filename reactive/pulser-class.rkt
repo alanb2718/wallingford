@@ -10,5 +10,4 @@
     (super-new)
     (send this set-image! (make-circle this))
     (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
-    (send-syncd this evaluate-syncd (lambda () (send this solve)))))
-    ;  (send this solve)))
+    (send this solve)))

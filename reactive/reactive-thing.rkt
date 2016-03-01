@@ -23,14 +23,10 @@
     (define when-holders '())  ; list of whens
     ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to
     ; time-at-startup.
-    ;
-    ; hack of desperation - re-initialize the current solution in this thing's thread
-    (send-syncd this evaluate-syncd (lambda () (send this init-current-solution)))
     (define-symbolic* symbolic-time real?)
-    ; start time out at 0 (again, as a hack of desperation, do this in the thread)
-     (send-syncd this evaluate-syncd (lambda () (assert (equal? symbolic-time 0))))
-    ;(send this solve)
-    (send-syncd this evaluate-syncd (lambda () (send this solve)))
+    ; start time out at 0
+    (assert (equal? symbolic-time 0))
+    (send this solve)
     (stay symbolic-time)
     ; to implement previous, we just need to evaluate the expression in the current (i.e. old) solution
     (define/public (previous expr)

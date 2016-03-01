@@ -60,17 +60,15 @@
     ; always*-code is just a list consisting of all of the code for the always* constraints
     ; (used by reactive-thing% to decide whether there are temporal constraints)
     (define always*-code '())
-    
-    (define current-solution (make-parameter (sat)))
 
-    ; hack to re-initialize current solution for use in a thread
-    (define/public (init-current-solution) (set! current-solution (make-parameter (sat))))
-    
+    ; start current-solution as an empty solution
+    (define current-solution (sat))
+
     (define/public (get-current-solution)
-      (current-solution))
+      current-solution)
     (define/public (update-current-solution sol)
-      (current-solution sol))
-    (define/public (wally-evaluate expr [soln (current-solution)])
+      (set! current-solution sol))
+    (define/public (wally-evaluate expr [soln current-solution])
       (evaluate expr soln))
     
     ; clear the lists of always constraints and stays, as well as the global assertion store
@@ -92,7 +90,7 @@
     ; When we return from calling wally-solve, the solution object that is returned holds a solution.
     ; Also update (current-solution) using the solution that is found.
     ; Optional argument: old-soln is the starting solution.  Defaults to (current-solution).
-    (define/public (solve [old-soln (current-solution)])
+    (define/public (solve [old-soln current-solution])
       (define old-required-stay-vals (map (lambda (s) (evaluate s old-soln)) required-stays))
       (define old-soft-stay-vals (map (lambda (s) (evaluate s old-soln)) (map soft-target soft-stays)))
       ; get a handle to the current solver: ok to use the solver directly because we aren't doing finitization!
@@ -138,7 +136,7 @@
         (solver-add solver (list keep-going))
         (set! soln (solver-check solver)) ; the best solution seen so far.
         (when (sat? soln)
-          (current-solution soln)
+          (set! current-solution soln)
           (when debug 
             (printf "passed the solve call in minimize\n")
             (printf "model: ~a\n" (model soln))
@@ -150,7 +148,7 @@
       ; Clear the solver state.
       (solver-clear solver)
       ; Return current-solution
-      (current-solution))
+      current-solution)
     
     
     ; get the source code for always* constraints (to use in deciding whether they are temporally dependent)

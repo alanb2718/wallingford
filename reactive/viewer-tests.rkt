@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for viewer%.  Run these from all-tests.rkt
+;; unit tests for viewer%
 
 (require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require racket/string)
