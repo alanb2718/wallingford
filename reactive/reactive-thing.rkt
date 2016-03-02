@@ -4,7 +4,7 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "abstract-reactive-thing.rkt")
-; make Racket's version of when available also
+; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
 
 (provide when racket-when reactive-thing%)
@@ -68,12 +68,13 @@
 
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' condition true.  If there aren't any values between the current time and the target that makes
-    ; a 'when' condition true, then return the target.  Note that the calls to solve in this function use a
-    ; separate assertion stack, leaving alone the global stack and solution.
+    ; a 'when' condition true, then return the target.  Note that the calls to solve in this method don't
+    ; change the current solution (held in an instance variable defined in thing%).
     (define/override (find-time mytime target)
       ; if there aren't any when statements, just return the target time, otherwise solve for the time to jump to
       (cond [(null? when-holders) target]
             [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
+                  (define min-time target) ; we will try to decrease this
                   (assert (> symbolic-time mytime))
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target) 
@@ -86,13 +87,12 @@
                     ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
                     (solver-add solver (list keep-going))
                     (define sol (solver-check solver))
-                    (cond [(sat? sol) ; if unsat we are done: (current-solution) holds the minimum value for my-time
-                           (send this update-current-solution sol) ; the best solution seen so far.
-                           (search (< symbolic-time (send this wally-evaluate symbolic-time)))]))
-                  (clear-asserts!)
-                  (solver-clear solver)
-                  ; symbolic-time still retains its value in the solution even though we are clearing asserts
-                  (send this wally-evaluate symbolic-time)]))
+                    (cond [(sat? sol) ; if unsat we are done: min-time holds the minimum value for symbolic-time
+                           (set! min-time (evaluate symbolic-time sol))
+                           (search (< symbolic-time min-time))])
+                    (clear-asserts!)
+                    (solver-clear solver)
+                    min-time)]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
@@ -101,19 +101,19 @@
       (let ([mytime (send this milliseconds-evaluated)])
         ; make sure we haven't gone by the target time already - if we have, don't do anything
         (cond [(< mytime target)
-               (let ([old-solution (send this get-current-solution)]
-                     [next-time (find-time mytime target)])
+               (let ([next-time (find-time mytime target)])
                  (assert (equal? symbolic-time next-time))
+                 (define saved-asserts (asserts))
                  ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
                  (send this solve)
                  (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w))))
                                               when-holders))
-                 ; assert the constraints in all of the bodies of the active whens and solve again
+                 ; Assert the constraints in all of the bodies of the active whens.  Also, solving clears the
+                 ; global assertion store, so add that back in.  This includes the assertion that symbolic-time
+                 ; equals next-time.  Then solve again.
                  (for-each (lambda (w) ((when-holder-body w))) active-whens)
-                 ; need to re-assert that symbolic-time equals next-time since solve clears assertions
-                 (assert (equal? symbolic-time next-time))
-                 ; now update the current solution starting with old-solution, so that 'previous' works correctly
-                 (send this solve old-solution)
+                 (for-each (lambda (a) (assert a)) saved-asserts)
+                 (send this solve)
                  ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
                  ; have changed but that's ok -- we just don't want to miss telling them if it did.)
                  (cond [(not (null? active-whens))

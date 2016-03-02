@@ -23,7 +23,7 @@
     (define (potential-targets)
       (printf "computing potential targets\n")
       (filter (lambda (c) (contains-point c (mouse-position)))
-              (send this evaluate-with-my-solution (unbox my-image))))
+              (send this wally-evaluate (unbox my-image))))
     (when (button-pressed)
       (let ([tgs (potential-targets)])
         (printf "tgs = ~a  mousepos ~a \n" tgs (mouse-position))

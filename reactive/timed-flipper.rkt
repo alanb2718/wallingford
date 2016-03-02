@@ -8,7 +8,8 @@
 (define timed-flipper%
   (class reactive-thing%
     (inherit milliseconds image previous)
-    (super-new [init-image (make-circle)])
+    (super-new)
+    (send this set-image! (make-circle this))
     
     (when (zero? (remainder (milliseconds) 2000))
       (assert (equal? (circle-color (image))

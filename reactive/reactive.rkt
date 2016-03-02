@@ -12,4 +12,4 @@
 ; stuff from other modules, re-provided here to avoid more requires in demos
 (provide when reactive-thing% always always* send-thing send-syncd make-viewer
          circle make-circle circle-radius circle-color circle-center
-         point contains-point point-minus color)
+         point make-point contains-point point-minus color)

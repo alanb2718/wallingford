@@ -14,13 +14,14 @@
 (define selection-example%
   (class reactive-thing%
     (inherit button-pressed mouse-position image previous)
-    (define c1 (make-circle (circle (point 150 150) 50 (color "blue"))))
-    (define c2 (make-circle (circle (point 200 150) 50 (color "red"))))
-    (define c3 (make-circle (circle (point 250 150) 50 (color "green"))))
+    (super-new)
+    (define c1 (make-circle this (circle (point 150 150) 50 (color "blue"))))
+    (define c2 (make-circle this (circle (point 200 150) 50 (color "red"))))
+    (define c3 (make-circle this (circle (point 250 150) 50 (color "green"))))
     (define my-image (box (list c1 c2 c3)))
     (define actual-target null)
     (define actual-offset null)
-    (super-new [init-image my-image])
+    (send this set-image! my-image)
     (define mp (make-point))
     (always* (equal? mp (mouse-position)))
     (define potential-targets (filter (lambda (c) (contains-point c mp)) (unbox my-image)))
