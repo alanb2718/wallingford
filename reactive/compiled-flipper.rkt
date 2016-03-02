@@ -10,7 +10,8 @@
 (define compiled-flipper%
   (class compiled-reactive-thing%
     (inherit seconds image button-pressed)
-    (super-new [init-image (circle (point 150 150) 50 (color "blue"))])
+    (super-new)
+    (send this set-image! (circle (point 150 150) 50 (color "blue")))
     
     ; hand written versions of methods intended to be compiled automatically
     (define/override (get-sampling)
@@ -22,7 +23,7 @@
       ;                  (flip (previous (circle-color (image)))))))))
       ; So if the button is pressed update the image with the flipped color
       (cond [(button-pressed)
-             (send this update-myimage
+             (send this set-image!
                    (struct-copy circle (image) [color (flip (circle-color (image)))]))]))
     (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target

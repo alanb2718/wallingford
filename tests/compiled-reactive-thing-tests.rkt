@@ -2,18 +2,16 @@
 ;; unit tests for compiled-reactive-thing% -- these should be parallel to the tests for reactive-thing%
 
 (require rackunit rackunit/text-ui rosette/lib/util/roseunit)
-; (require racket/gui/base)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
-(require "reactive.rkt")
-(require "compiled-reactive-thing.rkt")
+(require "../reactive/reactive.rkt")
+(require "../reactive/compiled-reactive-thing.rkt")
 
 (provide compiled-reactive-thing-tests)
 
 (define (advance-time-no-whens)
   (test-case
    "test advance time with no whens"
-   (wally-clear)
    (define no-constraints-tester%
      (class compiled-reactive-thing%
        (super-new)
@@ -33,7 +31,6 @@
 (define (advance-time-one-when)
   (test-case
    "test advance time with one when"
-   (wally-clear)
    (define count 0)
    (define (get-count) count)
    (define one-when-tester%
@@ -67,7 +64,6 @@
 (define (advance-time-multiple-whens)
   (test-case
    "test advance time with multiple whens"
-   (wally-clear)
    (define times '())
    (define (get-times) times)
    (define multi-when-tester%
@@ -106,7 +102,6 @@
 (define (button-events)
   (test-case
    "test button event handling (just with reactive thing programatically, not with a viewer)"
-   (wally-clear)
    (define times '())
    (define (get-times) times)
    ; compiling for this constraint:
@@ -135,7 +130,6 @@
    (check-equal? (send-syncd r1 milliseconds-syncd) 300)
    (check-equal? (send-syncd r1 evaluate-syncd get-times) '(("button" 200) ("button" 100)))
    ; now test button event handling advancing to the same time as the button down
-   (wally-clear)
    (set! times '())
    (define r2 (new button-events-tester%))
    (send-thing r2 advance-time 50)
@@ -160,7 +154,7 @@
 ; sampling-tests omitted, since get-sampling should be provided by compiled classes
 
 (define compiled-reactive-thing-tests 
-  (test-suite+ 
+  (test-suite+
    "run tests for compiled-reactive-thing"
    (advance-time-no-whens)
    (advance-time-one-when)

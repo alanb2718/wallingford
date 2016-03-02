@@ -8,5 +8,7 @@
  "always-star-tests.rkt"
  "geothings-tests.rkt"
  "electrical-things-tests.rkt"
- "electrical-things-dynamic-tests.rkt")
-
+ "electrical-things-dynamic-tests.rkt"
+ "reactive-thing-tests.rkt"
+ "viewer-tests.rkt"
+ "compiled-reactive-thing-tests.rkt")

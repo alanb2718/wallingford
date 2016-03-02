@@ -4,7 +4,7 @@
 (require rackunit rackunit/text-ui rosette/lib/util/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
-(require "reactive.rkt")
+(require "../reactive/reactive.rkt")
 
 (provide reactive-thing-tests)
 

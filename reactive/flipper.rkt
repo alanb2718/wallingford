@@ -8,11 +8,12 @@
 (define flipper%
   (class reactive-thing%
     (inherit button-pressed image previous)
-    (super-new [init-image (make-circle)])
-    
+    (super-new)
+    (send this set-image! (make-circle this))
     (when (button-pressed)
       (assert (equal? (circle-color (image))
-                      (flip (previous (circle-color (image)))))))))
+                      (flip (previous (circle-color (image)))))))
+    (send this solve)))
 
 
 (define p (new flipper%))

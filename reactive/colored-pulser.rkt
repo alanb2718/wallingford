@@ -16,7 +16,8 @@
     
     (when (zero? (remainder (milliseconds) 2000))
       (assert (equal? (circle-color (image))
-                      (flip (previous (circle-color (image)))))))))
+                      (flip (previous (circle-color (image)))))))
+    (send this solve)))
 
 
 (define p (new colored-pulser%))

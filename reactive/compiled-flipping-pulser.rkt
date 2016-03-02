@@ -10,7 +10,8 @@
 (define compiled-flipping-pulser%
   (class compiled-reactive-thing%
     (inherit seconds image button-pressed)
-    (super-new [init-image (circle (point 150 150) 50 (color "blue"))])
+    (super-new)
+    (send this set-image! (circle (point 150 150) 50 (color "blue")))
     
     ; hand written versions of methods intended to be compiled automatically
     (define/override (get-sampling)
@@ -22,7 +23,7 @@
       ;  (assert (equal? (circle-color (image))
       ;                  (flip (previous (circle-color (image)))))))))
       (let ([newcolor (if (button-pressed) (flip (circle-color (image))) (circle-color (image)))])
-        (send this update-myimage (struct-copy circle (image)
+        (send this set-image! (struct-copy circle (image)
                                                [radius  (+ 60 (* 50 (sin (seconds))))]
                                                [color newcolor]))))
     (define/override (find-time mytime target)
@@ -31,4 +32,4 @@
                                        (send this get-button-down-event-times))])
         (if (null? potential-targets) target (apply min potential-targets))))))
 
-(make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.01)
+(make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.05)

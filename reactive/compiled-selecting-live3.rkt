@@ -1,7 +1,5 @@
 #lang s-exp rosette
 ; hand compiled code selecting-live3.rkt
-(require "../core/wallingford.rkt")
-(require "../applications/geothings.rkt")
 (require "reactive.rkt")
 (require "compiled-reactive-thing.rkt")
 
@@ -20,7 +18,8 @@
     (define my-image (box (list c1 c2 c3)))
     (define actual-target null)
     (define actual-offset null)
-    (super-new [init-image my-image])
+    (super-new)
+    (send this set-image! my-image)
     (define potential-targets (filter (lambda (c) (contains-point c (mouse-position))) (unbox my-image)))
 
     ; hand written versions of methods intended to be compiled automatically
@@ -31,7 +30,7 @@
       ;   (always* (equal? mp (mouse-position)))
       ;   (define potential-targets (filter (lambda (c) (contains-point c mp)) (unbox my-image)))
       (set! potential-targets 
-            (filter (lambda (c) (contains-point c (mouse-position))) (evaluate (unbox my-image))))
+            (filter (lambda (c) (contains-point c (mouse-position))) (send this wally-evaluate (unbox my-image))))
       (cond [(and (button-pressed) (pair? potential-targets))
              (set! actual-target (car potential-targets))
              (set! actual-offset (point-minus (mouse-position) (circle-center actual-target)))

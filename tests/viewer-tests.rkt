@@ -5,9 +5,9 @@
 (require racket/string)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
-(require "reactive.rkt")
-(require "viewer.rkt")
-(require "pulser-class.rkt")
+(require "../reactive/reactive.rkt")
+(require "../reactive/viewer.rkt")
+(require "../reactive/pulser-class.rkt")
 
 
 (provide viewer-tests)
