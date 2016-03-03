@@ -46,6 +46,43 @@
    (check equal? (send-syncd r milliseconds-syncd) 300)
    (check equal? (send-syncd r evaluate-syncd get-count) 1)))
 
+(define (advance-time-one-when-separate-var)
+  (test-case
+   "test advance time with one when, but with a separate var in the condition"
+   ; with a better find-time method in reactive-thing this shouldn't give an error --
+   ; additional tests commented out for now
+   (define count 0)
+   (define (get-count) count)
+   (define one-when-tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* m real?)
+       (always* (equal? m (milliseconds)))
+       (when (equal? m 100)
+         (set! count (+ 1 count)))))
+   
+   (define r (new one-when-tester%))
+   (check equal? (send-syncd r milliseconds-syncd) 0)
+   (check equal? (send-syncd r evaluate-syncd get-count) 0)
+   ; do the with-handlers call inside evaluate-syncd so that it is evaluated in the thing's thread
+   (check eq? (send-syncd r evaluate-syncd (lambda () (with-handlers ([exn:fail? (lambda (exn) 'got-error)])
+                                            (send r advance-time-helper 30))))
+          'got-error)
+   ; these could be enabled after there is a better find-time
+   ; (send-thing r advance-time 30)
+   ; (check equal? (send-syncd r milliseconds-syncd) 30)
+   ; (check equal? (send-syncd r evaluate-syncd get-count) 0)
+   ; 
+   ; (send-thing r advance-time 200)
+   ; (check equal? (send-syncd r milliseconds-syncd) 200)
+   ; (check equal? (send-syncd r evaluate-syncd get-count) 1)
+   ; 
+   ; (send-thing r advance-time 300)
+   ; (check equal? (send-syncd r milliseconds-syncd) 300)
+   ;  (check equal? (send-syncd r evaluate-syncd get-count) 1)
+   ))
+
 (define (advance-time-multiple-whens)
   (test-case
    "test advance time with multiple whens"
@@ -160,6 +197,7 @@
    "run tests for reactive-thing"
    (advance-time-no-whens)
    (advance-time-one-when)
+   (advance-time-one-when-separate-var)
    (advance-time-multiple-whens)
    (button-events)
    (sampling-tests)

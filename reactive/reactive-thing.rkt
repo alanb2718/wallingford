@@ -92,6 +92,9 @@
                            (search (< symbolic-time min-time))])
                     (clear-asserts!)
                     (solver-clear solver)
+                    ; make sure we aren't stuck
+                    (racket-when (equal? mytime min-time)
+                                 (error 'find-time "unable to find a time to advance to that is greater than the current time"))
                     min-time)]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
