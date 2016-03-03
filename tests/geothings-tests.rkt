@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for geothings, using a midpoint example
 
-(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
+(require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 

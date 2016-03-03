@@ -6,13 +6,24 @@
 (provide point point? point-x point-y make-point point-plus point-minus point-scale
          line line? line-end1 line-end2 make-line 
          circle circle? circle-center circle-radius make-circle contains-point
-         color circle-color
+         color label circle-color
          midpointline-line midpointline-midpoint make-midpointline make-midpointline-with-stays
          showthing)
 
-; define color as a Rosette enum, so that we can put constraints on colors
-; the elements are strings rather than symbols since the Racket graphics library wants strings to look up color names
-(define-enum color '("red" "green" "blue" "black"))
+; Define colors as a mapping from integers to strings, so that we can put constraints on colors.
+(define colors '("red" "green" "blue" "black"))
+
+(define (color-index? i) (<= 0 i (length colors)))
+
+; Returns the index of the given color.
+(define (color str)
+  (let loop ([i 0][colors colors])
+    (if (equal? (car colors) str)
+        i
+        (loop (+ i 1) (cdr colors)))))
+
+; Returns the color at the given index.
+(define (label i) (list-ref colors i))
 
 ;; structs for geometric objects (including colored objects)
 (struct point (x y) #:transparent)
@@ -31,7 +42,7 @@
 ; make-circle includes default values (if this works OK, add this to other functions as well)
 (define (make-circle owner [initial-value (circle (point 150 150) 50 (color "blue"))])
   (define-symbolic* r real?)
-  (define-symbolic* c color?)
+  (define-symbolic* c integer?)
   (define circ (circle (make-point) r c))
   ; give it a default value
   (assert (equal? circ initial-value))
