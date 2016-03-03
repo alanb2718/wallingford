@@ -1,7 +1,7 @@
 #lang racket
 ;; run all unit tests for wallingford
 
-(require rosette/lib/util/roseunit)
+(require rosette/lib/roseunit)
 
 (run-all-tests
  "wallingford-core-tests.rkt"

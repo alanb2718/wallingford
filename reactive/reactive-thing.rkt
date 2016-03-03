@@ -81,13 +81,13 @@
                                    (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
-                  (solver-add solver (asserts))
+                  (solver-assert solver (asserts))
                   (let search ([keep-going #t])
                     ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
                     ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
                     ; if the value of this expression is true then one of the 'when' conditions holds
                     ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
-                    (solver-add solver (list keep-going))
+                    (solver-assert solver (list keep-going))
                     (define sol (solver-check solver))
                     (cond [(sat? sol) ; if unsat we are done: min-time holds the minimum value for symbolic-time
                            (set! min-time (evaluate symbolic-time sol))

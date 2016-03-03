@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for compiled-reactive-thing% -- these should be parallel to the tests for reactive-thing%
 
-(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
+(require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "../reactive/reactive.rkt")
