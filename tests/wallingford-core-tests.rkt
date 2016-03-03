@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ;; Unit tests for wallingford core.  Run from all-tests.rkt
 
-(require rackunit rackunit/text-ui rosette/lib/util/roseunit)
+(require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
 
 (provide wallingford-core-tests)
