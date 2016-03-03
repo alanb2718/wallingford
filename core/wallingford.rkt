@@ -121,23 +121,10 @@
         (printf "cn-proc-penalties: ~a\n" cn-proc-penalties)
         (printf "stay-penalties: ~a\n" stay-penalties)
         (printf "total-penalty: ~a\n" total-penalty))
-      ; Use iterative deepening to minimize the penalties for the unsatisfied soft constraints and stays.
-      ; The parameter keep-going is initially (<= 0 (abs total-penalty)) -- just having it be [keep-going #t]
-      ; can't work if no other constraints are added to the solver. If the only added constraint is #t, 
-      ; Rosette has no basis for assigning values to any variables. There are some tests in 
-      ; wallingford-core-tests.rkt that illustrate this.
-      (let minimize ([keep-going (<= 0 (abs total-penalty))])
-        (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-        (solver-assert solver (list keep-going))
-        (set! soln (solver-check solver)) ; the best solution seen so far.
-        (when (sat? soln)
-          (set! current-solution soln)
-          (when debug 
-            (printf "passed the solve call in minimize\n")
-            (printf "model: ~a\n" (model soln))
-            (printf "about to call minimize with total-penalty=~a, (evaluate total-penalty)=~a \n" 
-                    total-penalty (evaluate total-penalty soln)))
-          (minimize (< total-penalty (evaluate total-penalty soln)))))
+
+      (solver-minimize solver (list total-penalty)) ; ask Z3 to minimize the total-penalty objective
+      (set! current-solution (solver-check solver))
+      
       ; Clear the global assertion store.
       (clear-asserts!)
       ; Clear the solver state.

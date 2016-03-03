@@ -74,7 +74,6 @@
       ; if there aren't any when statements, just return the target time, otherwise solve for the time to jump to
       (cond [(null? when-holders) target]
             [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
-                  (define min-time target) ; we will try to decrease this
                   (assert (> symbolic-time mytime))
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target) 
@@ -82,22 +81,16 @@
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
-                  (let search ([keep-going #t])
-                    ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-                    ; keep-going is true if we can find a symbolic-time that is less than the one in the current solution
-                    ; if the value of this expression is true then one of the 'when' conditions holds
-                    ;     (ormap (lambda (w) ((when-holder-condition w))) when-holders)
-                    (solver-assert solver (list keep-going))
-                    (define sol (solver-check solver))
-                    (cond [(sat? sol) ; if unsat we are done: min-time holds the minimum value for symbolic-time
-                           (set! min-time (evaluate symbolic-time sol))
-                           (search (< symbolic-time min-time))])
-                    (clear-asserts!)
-                    (solver-clear solver)
-                    ; make sure we aren't stuck
-                    (racket-when (equal? mytime min-time)
-                                 (error 'find-time "unable to find a time to advance to that is greater than the current time"))
-                    min-time)]))
+
+                  (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
+                  (define sol (solver-check solver))
+                  (define min-time (evaluate symbolic-time sol))
+                  (clear-asserts!)
+                  (solver-clear solver)
+                  ; make sure we aren't stuck
+                  (racket-when (equal? mytime min-time)
+                               (error 'find-time "unable to find a time to advance to that is greater than the current time"))
+                  min-time]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.

@@ -79,7 +79,7 @@
 (define (advance-time-one-when-separate-var-soft-cn)
   (test-case
    "test advance time with one when, but with a separate var in the condition and a soft constraint"
-   ; this becomes too hard for the solver to find a new time to advance to
+   ; NOTE:  with Z3 minimize, a new time to advance to can be found 
    (define one-when-tester%
      (class reactive-thing%
        (inherit milliseconds)
@@ -91,9 +91,10 @@
    (define r (new one-when-tester%))
    (check equal? (send-syncd r milliseconds-syncd) 0)
    ; do the with-handlers call inside evaluate-syncd so that it is evaluated in the thing's thread
-   (check eq? (send-syncd r evaluate-syncd (lambda () (with-handlers ([exn:fail? (lambda (exn) 'got-error)])
-                                            (send r advance-time-helper 30))))
-          'got-error)))
+   (check equal? (send-syncd r evaluate-syncd (lambda ()
+                                                (send r advance-time-helper 30)
+                                                (send r milliseconds-evaluated)))
+          30)))
 
 (define (advance-time-multiple-whens)
   (test-case
