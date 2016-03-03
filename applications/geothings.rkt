@@ -1,5 +1,5 @@
 #lang s-exp rosette
-; geometric things in Wallingford/Rosette (also an example of handling state and change)
+; geometric things in Wallingford/Rosette
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
 

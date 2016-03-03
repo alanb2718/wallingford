@@ -8,5 +8,5 @@ constraints.
 Directories:
 * core -- the core system
 * applications -- various applications built on core
-* reactive -- additional classes for adding reactive constraints to the core
+* reactive -- additional classes for adding reactive constraints to the core and applications 
 * tests -- these use RackUnit
