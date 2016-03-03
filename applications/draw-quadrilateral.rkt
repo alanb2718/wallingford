@@ -29,9 +29,9 @@
 
 ; initialize the locations of the sides (the midpoints and parallelogram sides can take care of themselves)
 (assert (equal? (line-end1 (midpointline-line side1)) (point 250  50)))
-(assert (equal? (line-end1 (midpointline-line side2)) (point 550 250)) #:owner picture)
-(assert (equal? (line-end1 (midpointline-line side3)) (point 250 550)) #:owner picture)
-(assert (equal? (line-end1 (midpointline-line side4)) (point  50 250)) #:owner picture)
+(assert (equal? (line-end1 (midpointline-line side2)) (point 550 250)))
+(assert (equal? (line-end1 (midpointline-line side3)) (point 250 550)))
+(assert (equal? (line-end1 (midpointline-line side4)) (point  50 250)))
 (send picture solve)
 
 (define frame (new frame%
@@ -72,6 +72,6 @@
 (for ([i 50])
   (let ((x (+ (* i 4) 250))
         (y (+ (* i 12) 50)))
-    (assert (equal? (line-end1 (midpointline-line side1)) (point x y)) #:owner picture)
+    (assert (equal? (line-end1 (midpointline-line side1)) (point x y)))
     (send picture solve)
     (showquad)))
