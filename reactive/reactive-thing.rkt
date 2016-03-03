@@ -79,6 +79,8 @@
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target) 
                                    (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
+                  ; add all required always, always*, and stays to the solver
+                  (send this solver-add-required solver)
                   (solver-add solver (asserts))
                   (let search ([keep-going #t])
                     ; (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
