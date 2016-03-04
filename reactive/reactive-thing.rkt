@@ -86,9 +86,10 @@
                   (define sol (solver-check solver))
                   (define min-time (evaluate symbolic-time sol))
                   ; make sure that this is indeed a minimum (not an infinitesimal)
+                  ; trying to advance time by an infinitesimal amount would loop forever
                   (solver-assert solver (list (< symbolic-time min-time)))
                   (unless (unsat? (solver-check solver))
-                    (error 'find-time "infinite regress"))
+                    (error 'find-time "can only advance time by an infinitesimal amount"))
                   (clear-asserts!)
                   (solver-clear solver)
                   ; make sure we aren't stuck

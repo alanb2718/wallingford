@@ -78,8 +78,7 @@
 
 (define (advance-time-one-when-separate-var-soft-cn)
   (test-case
-   "test advance time with one when, but with a separate var in the condition and a soft constraint"
-   ; NOTE:  with Z3 minimize, a new time to advance to can be found 
+   "test advance time for a case that is too hard (should get an exception)"
    (define one-when-tester%
      (class reactive-thing%
        (inherit milliseconds)
@@ -94,7 +93,7 @@
    (check equal? (send-syncd r evaluate-syncd
                              (lambda () (with-handlers ([exn:fail? (lambda (e) (exn-message e))])
                                           (send r advance-time-helper 30))))
-          "find-time: infinite regress")))
+          "find-time: can only advance time by an infinitesimal amount")))
 
 (define (advance-time-multiple-whens)
   (test-case
