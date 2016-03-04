@@ -91,10 +91,10 @@
    (define r (new one-when-tester%))
    (check equal? (send-syncd r milliseconds-syncd) 0)
    ; do the with-handlers call inside evaluate-syncd so that it is evaluated in the thing's thread
-   (check equal? (send-syncd r evaluate-syncd (lambda ()
-                                                (send r advance-time-helper 30)
-                                                (send r milliseconds-evaluated)))
-          30)))
+   (check equal? (send-syncd r evaluate-syncd
+                             (lambda () (with-handlers ([exn:fail? (lambda (e) (exn-message e))])
+                                          (send r advance-time-helper 30))))
+          "find-time: infinite regress")))
 
 (define (advance-time-multiple-whens)
   (test-case

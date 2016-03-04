@@ -85,6 +85,10 @@
                   (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
                   (define sol (solver-check solver))
                   (define min-time (evaluate symbolic-time sol))
+                  ; make sure that this is indeed a minimum (not an infinitesimal)
+                  (solver-assert solver (list (< symbolic-time min-time)))
+                  (unless (unsat? (solver-check solver))
+                    (error 'find-time "infinite regress"))
                   (clear-asserts!)
                   (solver-clear solver)
                   ; make sure we aren't stuck
