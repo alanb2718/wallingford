@@ -7,20 +7,24 @@
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
 
-(provide when racket-when reactive-thing%)
+(provide when racket-when while reactive-thing%)
 
-; Definition of 'when' macro.  'when' should be used within an instance of reactive-thing or a subclass
-; since it references 'this'.
-; Note that this overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
+; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
+; or a subclass since they reference 'this'.
+; Note that 'when' overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
   (send this add-when (when-holder (lambda () test) (lambda () e ...))))
-; struct to hold whens -- the condition and body are both thunks (anonymous lambdas)
+(define-syntax-rule (while test e ...)
+  (send this add-while (while-holder (lambda () test) (lambda () e ...))))
+; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
+(struct while-holder (condition body) #:transparent)
 
 (define reactive-thing%
   (class abstract-reactive-thing%
     (super-new)
     (define when-holders '())  ; list of whens
+    (define while-holders '())
     ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to
     ; time-at-startup.
     (define-symbolic* symbolic-time real?)
@@ -43,8 +47,8 @@
              ; if any of the always* constraints include a temporal reference, sampling should include pull
              (cond [(includes-one-of (send this get-always*-code) '((seconds) (milliseconds)))
                     (set! sampling (cons 'pull sampling))])
-             ; if there are when constraints, sampling should include push
-             (cond [(not (null? when-holders))
+             ; if there are when or while constraints, sampling should include push
+             (cond [(or (not (null? when-holders)) (not (null? while-holders)))
                     (set! sampling (cons 'push sampling))])])
       sampling)
     ; Helper function for get-sampling.  items should be a list of temporal function calls.
@@ -67,17 +71,21 @@
       (send this wally-evaluate (send this image)))
 
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' condition true.  If there aren't any values between the current time and the target that makes
-    ; a 'when' condition true, then return the target.  Note that the calls to solve in this method don't
-    ; change the current solution (held in an instance variable defined in thing%).
+    ; 'when' condition true or that makes a 'while' condition change its value.  If there aren't any such values
+    ; between the current time and the target, then just return the target.  Note that the calls to solve in this
+    ; method don't change the current solution, which is held in an instance variable defined in thing%.
     (define/override (find-time mytime target)
-      ; if there aren't any when statements, just return the target time, otherwise solve for the time to jump to
-      (cond [(null? when-holders) target]
+      ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
+      ; to which to advance.
+      (cond [(and (null? when-holders) (null? while-holders)) target]
             [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
+                  (define-symbolic* found-when found-while boolean?)
                   (assert (> symbolic-time mytime))
-                  (assert (or (equal? symbolic-time target)
-                              (and (< symbolic-time target) 
-                                   (ormap (lambda (w) ((when-holder-condition w))) when-holders))))
+                  (assert (equal? found-when (ormap (lambda (w) ((when-holder-condition w))) when-holders)))
+                  (assert (equal? found-while
+                                  (ormap (lambda (w) (not equal? ((while-holder-condition w)) (send this wally-evaluate ((while-holder-condition w)))))
+                                         while-holders)))
+                  (assert (or (equal? symbolic-time target) (and (< symbolic-time target) (or found-when found-while))))
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
@@ -97,8 +105,8 @@
                                (error 'find-time "unable to find a time to advance to that is greater than the current time"))
                   min-time]))
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
-    ; Solve all constraints in active when constraints.
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or a 'while' condition change.
+    ; Solve all constraints in active when and while constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)
       (let ([mytime (send this milliseconds-evaluated)])
@@ -111,15 +119,18 @@
                  (send this solve)
                  (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w))))
                                               when-holders))
-                 ; Assert the constraints in all of the bodies of the active whens.  Also, solving clears the
+                 (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-condition w))))
+                                              while-holders))
+                 ; Assert the constraints in all of the bodies of the active whens and whiles.  Also, solving clears the
                  ; global assertion store, so add that back in.  This includes the assertion that symbolic-time
                  ; equals next-time.  Then solve again.
                  (for-each (lambda (w) ((when-holder-body w))) active-whens)
+                 (for-each (lambda (w) ((while-holder-body w))) active-whiles)
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
                  ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
                  ; have changed but that's ok -- we just don't want to miss telling them if it did.)
-                 (cond [(not (null? active-whens))
+                 (cond [(not (null? active-whens))  ; FIX!!!!!!!!!!!!!!!!
                         (send this notify-watchers)])
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
