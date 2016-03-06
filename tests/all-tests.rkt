@@ -10,5 +10,7 @@
  "electrical-things-tests.rkt"
  "electrical-things-dynamic-tests.rkt"
  "reactive-thing-tests.rkt"
+ "when-tests.rkt"
  "viewer-tests.rkt"
- "compiled-reactive-thing-tests.rkt")
+ "compiled-reactive-thing-tests.rkt"
+ "compiled-when-tests.rkt")
