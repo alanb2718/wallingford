@@ -11,6 +11,7 @@
  "electrical-things-dynamic-tests.rkt"
  "reactive-thing-tests.rkt"
  "when-tests.rkt"
+ "while-tests.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
  "compiled-when-tests.rkt")

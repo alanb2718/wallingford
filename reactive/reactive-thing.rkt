@@ -7,7 +7,7 @@
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
 
-(provide when racket-when while reactive-thing%)
+(provide when while racket-when reactive-thing%)
 
 ; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
 ; or a subclass since they reference 'this'.
@@ -58,9 +58,11 @@
             [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
             [else #f]))
         
-    ; handling 'when'
+    ; handling 'when' and 'while'
     (define/public (add-when holder)
       (set! when-holders (cons holder when-holders)))
+    (define/public (add-while holder)
+      (set! while-holders (cons holder while-holders)))
     
     (define/override (milliseconds)
       symbolic-time)
@@ -81,11 +83,12 @@
             [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
                   (define-symbolic* found-when found-while boolean?)
                   (assert (> symbolic-time mytime))
-                  (assert (equal? found-when (ormap (lambda (w) ((when-holder-condition w))) when-holders)))
-                  (assert (equal? found-while
-                                  (ormap (lambda (w) (not equal? ((while-holder-condition w)) (send this wally-evaluate ((while-holder-condition w)))))
-                                         while-holders)))
-                  (assert (or (equal? symbolic-time target) (and (< symbolic-time target) (or found-when found-while))))
+                  (assert (or (equal? symbolic-time target)
+                              (and (< symbolic-time target)
+                                   (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
+                                       (ormap (lambda (w) (not equal? ((while-holder-condition w))  ; did a while condition change?
+                                                               (send this wally-evaluate ((while-holder-condition w)))))
+                                         while-holders)))))
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
