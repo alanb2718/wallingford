@@ -76,6 +76,9 @@
     ; 'when' condition true or that makes a 'while' condition change its value.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
+    ; TOFIX: this ought to be ".... that makes a 'while' condition change its value from #f to #t, or that would
+    ; make it change its value from #t to #f any time after the time found."  Getting this right probably needs
+    ; more explicit handling of infinitesimals in the solver-minimize function.
     (define/override (find-time mytime target)
       ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
       ; to which to advance.
@@ -86,18 +89,17 @@
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target)
                                    (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
-                                       (ormap (lambda (w) (not equal? ((while-holder-condition w))  ; did a while condition change?
+                                       (ormap (lambda (w) (xor ((while-holder-condition w))  ; did a while condition change?
                                                                (send this wally-evaluate ((while-holder-condition w)))))
                                          while-holders)))))
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
-
                   (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
                   (define sol (solver-check solver))
                   (define min-time (evaluate symbolic-time sol))
                   ; make sure that this is indeed a minimum (not an infinitesimal)
-                  ; trying to advance time by an infinitesimal amount would loop forever
+                  ; trying to advance time by an infinitesimal amount could loop forever
                   (solver-assert solver (list (< symbolic-time min-time)))
                   (unless (unsat? (solver-check solver))
                     (error 'find-time "can only advance time by an infinitesimal amount"))
@@ -131,10 +133,11 @@
                  (for-each (lambda (w) ((while-holder-body w))) active-whiles)
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
-                 ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
-                 ; have changed but that's ok -- we just don't want to miss telling them if it did.)
-                 (cond [(not (null? active-whens))  ; FIX!!!!!!!!!!!!!!!!
-                        (send this notify-watchers)])
+                 ; If any whens or whiles were activated tell the viewers that this thing might have changed.  (It might
+                 ; not actually have changed but that's ok -- we just don't want to miss telling them if it did.)
+                 ; TODO: this test ought to be that a while is active and will become inactive on any further advance-time
+                 (cond [(and (null? active-whens) (null? active-whiles)) (void)]
+                       [else (send this notify-watchers)])
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))))
