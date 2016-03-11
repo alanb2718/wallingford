@@ -10,11 +10,13 @@
 
 (define viewer%
   (class compiled-reactive-thing%
-    (init thing dc time-display sleep-time)
+    (init thing dc time-display fps-display sleep-time)
     (define my-thing thing)
     (define my-dc dc)
     (define my-time-display time-display)
+    (define my-fps-display fps-display)
     (define my-sleep-time sleep-time)
+    (define last-frame-time (current-inexact-milliseconds))
     (super-new)
     
     (define/override (match-thread-receive r)
@@ -39,10 +41,14 @@
     (define (refresh-helper)
       (cond [running
              (send-thing my-thing show my-dc)
-             (send my-time-display set-label (seconds->string (send my-thing seconds)))]
+             (send my-time-display set-label (seconds->string (send my-thing seconds)))
+             (let ([dt (- (current-inexact-milliseconds) last-frame-time)])
+               (send my-fps-display set-label (string-append "FPS: " (~r (/ 1000 dt) #:precision 0)))
+               (set! last-frame-time (current-inexact-milliseconds)))]
             [else
              (send my-dc clear)
-             (send my-time-display set-label " ")]))
+             (send my-time-display set-label " ")
+             (send my-fps-display set-label " ")]))
     ; seconds->string is to get around Racket's seeming inability to print a float formatted to have
     ; exactly one decimal place (?!!)
     (define (seconds->string s)
@@ -118,8 +124,9 @@
                    (send v unwatch))])
   ; start the label off as blank, with enough blanks to accommodate any reasonable time
   (define td (new message% [parent controls] [label (make-string 30 #\space)]))
+  (define fps (new message% [parent controls] [label (make-string 30 #\space)]))
   ; make a viewer and start it up
-  (define v (new viewer% [thing r] [dc dc] [time-display td] [sleep-time sleep-time]))
+  (define v (new viewer% [thing r] [dc dc] [time-display td] [fps-display fps] [sleep-time sleep-time]))
   (send canv set-viewer v)
   (send frame show #t)
   (send dc clear)
