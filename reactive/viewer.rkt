@@ -32,6 +32,12 @@
         [(list 'viewer-button-down-event event-time x y)
          ; for now always send the event along - later only send it if the watched cares about button down events
          (send-thing my-thing button-down-event event-time x y)]
+        [(list 'viewer-button-up-event event-time x y)
+         ; for now always send the event along - later only send it if the watched cares about button down events
+         (send-thing my-thing button-up-event event-time x y)]
+        [(list 'viewer-mouse-move-event event-time x y)
+         ; for now always send the event along - later only send it if the watched cares about button down events
+         (send-thing my-thing mouse-move-event event-time x y)]
         [_
          (super match-thread-receive r)]))
     
@@ -84,7 +90,11 @@
     (define/override (on-event event)
       ; note we can't call this statement 'when'!
       (cond [(send event button-down?)
-             (send-thing myviewer viewer-button-down-event null (send event get-x) (send event get-y))]))
+             (send-thing myviewer viewer-button-down-event null (send event get-x) (send event get-y))]
+            [(send event button-up?)
+             (send-thing myviewer viewer-button-up-event null (send event get-x) (send event get-y))]
+            [(send event moving?)
+             (send-thing myviewer viewer-mouse-move-event null (send event get-x) (send event get-y))]))
     ; Call the superclass init, passing on all init args
     (super-new)))
 

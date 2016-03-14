@@ -35,9 +35,13 @@
     (define watchers (mutable-set))
     ; alert is either a thread for the current alert, or null if none
     (define alert null)
-    ; list of times that a button down event occurred, and a matching list of locations
+    ; list of times that a button down/up event occurred, and a matching list of locations
     (define button-down-event-times '())
     (define button-down-locations '())
+    (define button-up-event-times '())
+    (define button-up-locations '())
+    (define mouse-move-event-times '())
+    (define mouse-move-locations '())
    
     ; Loop for receiving thread messages.  The 'match' part is in a separate method named
     ; match-thread-receive to allow it to be overridden or augmented in subclasses.
@@ -83,12 +87,23 @@
          ; if this was the last watcher terminate any alert
          (terminate-old-alert)]
         [(list 'button-down-event event-time mx my)
-         ; to avoid cycles, assume the button down event occurred at least 1 millisecond after
-         ; the thing's current internal time
-         (set! button-down-event-times
-               (cons (max (+ 1 (send this milliseconds-evaluated)) (if (null? event-time) (current-clock-time) event-time))
-                     button-down-event-times))
-         (set! button-down-locations (cons (point mx my) button-down-locations))
+         (set!-values
+          (button-down-event-times button-down-locations)
+          (mouse-times-and-locations-without-past event-time mx my button-down-event-times button-down-locations))
+         ; revise when to wake up next if need be (could be wake up right now)
+         ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
+         (cond [(not (set-empty? watchers)) (set-alert-helper)])]
+        [(list 'button-up-event event-time mx my)
+         (set!-values
+          (button-up-event-times button-up-locations)
+          (mouse-times-and-locations-without-past event-time mx my button-up-event-times button-up-locations))
+         ; revise when to wake up next if need be (could be wake up right now)
+         ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
+         (cond [(not (set-empty? watchers)) (set-alert-helper)])]
+        [(list 'mouse-move-event event-time mx my)
+         (set!-values
+          (mouse-move-event-times mouse-move-locations)
+          (mouse-times-and-locations-without-past event-time mx my mouse-move-event-times mouse-move-locations))
          ; revise when to wake up next if need be (could be wake up right now)
          ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
          (cond [(not (set-empty? watchers)) (set-alert-helper)])]
@@ -103,19 +118,40 @@
          (channel-put ch (thunk))]
         [_
          (error "thread message not understood: ~a\n" r)]))
+
+    (define (mouse-times-and-locations-without-past event-time mx my old-times old-events)
+      (values
+       ;; TODO: remove past events
+       ; to avoid cycles, assume the button down event occurred at least 1 millisecond after
+       ; the thing's current internal time
+       (cons (max (+ 1 (send this milliseconds-evaluated)) (if (null? event-time) (current-clock-time) event-time))
+                     old-times)
+       (cons (point mx my) button-down-locations)))
     
     ; get-sampling says how to sample.  It should be one of '(push) '(pull) '(push pull) or '()
     (define/public (get-sampling)
       (error "subclass responsibility\n"))
     
     ; button events
-    (define/public (button-pressed)
+    (define/public (button-down)
       (member (send this milliseconds) button-down-event-times))
+    (define/public (button-up)
+      (member (send this milliseconds) button-up-event-times))
+    (define/public (button-state)
+      ;; get the button state at the current time. if the last down event before now has no up event following it
+      ;; or the next up event is after the current time, we are down
+      (let ((prev-downs (filter (lambda (t) (<= t (send this milliseconds))) button-down-event-times))
+            (prev-ups (filter (lambda (t) (<= t (send this milliseconds))) button-up-event-times)))
+        (if (or (null? prev-downs) (and (not (null? prev-ups)) (> (last prev-ups) (last prev-downs))))
+            'up
+            'down)))
+    ; TODO: remove old API compat
+    (define/public (button-pressed) (button-down))
     ; If we don't have a record of mouse-position at the current time, return (point 0 0)
     ; Maybe fix this later?  Kind of funky ....
     (define/public (mouse-position)
-      (or (for/first ([t button-down-event-times]
-                      [p button-down-locations]
+      (or (for/first ([t mouse-move-event-times]
+                      [p mouse-move-locations]
                       #:when (equal? (send this milliseconds-evaluated) t))
             p)
           (point 0 0)))
@@ -147,7 +183,10 @@
     
     (define/public (get-button-down-event-times)
       button-down-event-times)
-    
+    (define/public (get-button-up-event-times)
+      button-up-event-times)
+    (define/public (get-mouse-move-event-times)
+      mouse-move-event-times)
     (define/public-final (get-thread) mythread)
 
     ; viewers -- make these into thread messages
