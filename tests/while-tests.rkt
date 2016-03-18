@@ -55,9 +55,9 @@
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send-syncd r evaluate-syncd get-times) '())))
    
-(define (one-while-not-exact)
+(define (one-while-soft)
   (test-case
-   "test advance time with one while - don't exactly hit the time the condition changes"
+   "test advance time with one while - detect the effect using a soft constraint that can be satisfied when the 'while' is off"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)
@@ -65,7 +65,7 @@
        (define-symbolic* x integer?)
        (always (equal? x 1) #:priority low)
        (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-              #:interesting-time (lambda () (or (equal? (milliseconds) 50) (equal? (milliseconds 100))))
+              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
               (assert (equal? x 2)))
        (define/public (get-x) (send this wally-evaluate x))))
    (define r (new tester%))
@@ -82,36 +82,6 @@
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send r get-x) 1)))
    
-(define (one-while-exact)
-  (test-case
-   "test advance time with one while - do exactly hit the time the condition changes"
-   (define tester%
-     (class reactive-thing%
-       (inherit milliseconds)
-       (super-new)
-       (define-symbolic* x integer?)
-       (always (equal? x 1) #:priority low)
-       (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-              #:interesting-time (lambda () (or (equal? (milliseconds) 50) (equal? (milliseconds 100))))
-              (assert (equal? x 2)))
-       (define/public (get-x) (send this wally-evaluate x))))
-   (define r (new tester%))
-   (send-thing r advance-time 10)
-   (check equal? (send-syncd r milliseconds-syncd) 10)
-   (check equal? (send r get-x) 1)
-   (send-thing r advance-time 50)
-   (check equal? (send-syncd r milliseconds-syncd) 50)
-   (check equal? (send r get-x) 2)
-   (send-thing r advance-time 75)
-   (check equal? (send-syncd r milliseconds-syncd) 75)
-   (check equal? (send r get-x) 2)
-   (send-thing r advance-time 100)
-   (check equal? (send-syncd r milliseconds-syncd) 100)
-   (check equal? (send r get-x) 2)
-   (send-thing r advance-time 200)
-   (check equal? (send-syncd r milliseconds-syncd) 200)
-   (check equal? (send r get-x) 1)))
-
 (define (one-while-track-times)
   (test-case
    "test advance time with one while, keeping track of the times at which the body of the while is evaluated"
@@ -122,7 +92,7 @@
        (inherit milliseconds)
        (super-new)
        (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-              #:interesting-time (lambda () (or (equal? (milliseconds) 50) (equal? (milliseconds 100))))
+              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
               (set! times (cons (send this wally-evaluate (milliseconds)) times)))))
    (define r (new tester%))
    (send-thing r advance-time 10)
@@ -136,7 +106,7 @@
    (check equal? (send-syncd r evaluate-syncd get-times) '(75 60 50))
    (send-thing r advance-time 200)
    (check equal? (send-syncd r milliseconds-syncd) 200)
-   (check equal? (send-syncd r evaluate-syncd get-times) '(75 60 50))))
+   (check equal? (send-syncd r evaluate-syncd get-times) '(100 75 60 50))))
    
 (define (one-while-track-times-exact)
   (test-case
@@ -148,7 +118,7 @@
        (inherit milliseconds)
        (super-new)
        (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-              #:interesting-time (lambda () (or (equal? (milliseconds) 50) (equal? (milliseconds 100))))
+              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
               (set! times (cons (send this wally-evaluate (milliseconds)) times)))))
    (define r (new tester%))
    (send-thing r advance-time 10)
@@ -179,7 +149,7 @@
        (send this solve)
        (stay x)
        (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-              #:interesting-time (lambda () (or (equal? (milliseconds) 50) (equal? (milliseconds 100))))
+              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
               (assert (equal? x 2)))
        (define/public (get-x) (send this wally-evaluate x))))
    (define r (new tester%))
@@ -200,8 +170,7 @@
    "run tests for while in reactive-thing"
    (one-while-no-interesting)
    (one-while-no-interesting-hop-over)
-   (one-while-not-exact)
-   (one-while-exact)
+   (one-while-soft)
    (one-while-track-times)
    (one-while-track-times-exact)
    (one-while-hop-over)
