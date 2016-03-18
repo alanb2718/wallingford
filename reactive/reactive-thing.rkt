@@ -14,11 +14,18 @@
 ; Note that 'when' overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
   (send this add-when (when-holder (lambda () test) (lambda () e ...))))
-(define-syntax-rule (while test e ...)
-  (send this add-while (while-holder (lambda () test) (lambda () e ...))))
+; interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
+; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may
+; happen in the 'while' that will affect future state.  The default is that no times are interesting.
+(define-syntax while
+  (syntax-rules ()
+    ((while test #:interesting-time interesting e ...)
+     (send this add-while (while-holder (lambda () test) (lambda () interesting) (lambda () e ...))))
+    ((while test e ...)
+     (send this add-while (while-holder (lambda () test) (lambda () #f) (lambda () e ...))))))
 ; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
-(struct while-holder (condition body) #:transparent)
+(struct while-holder (condition interesting body) #:transparent)
 
 (define reactive-thing%
   (class abstract-reactive-thing%
@@ -73,12 +80,9 @@
       (send this wally-evaluate (send this image)))
 
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' condition true or that makes a 'while' condition change its value.  If there aren't any such values
+    ; 'when' condition true or is an interesting time for a 'while'.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
-    ; TOFIX: this ought to be ".... that makes a 'while' condition change its value from #f to #t, or that would
-    ; make it change its value from #t to #f any time after the time found."  Getting this right probably needs
-    ; more explicit handling of infinitesimals in the solver-minimize function.
     (define/override (find-time mytime target)
       ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
       ; to which to advance.
@@ -89,9 +93,7 @@
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target)
                                    (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
-                                       (ormap (lambda (w) (xor ((while-holder-condition w))  ; did a while condition change?
-                                                               (send this wally-evaluate ((while-holder-condition w)))))
-                                         while-holders)))))
+                                       (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
                   ; add all required always, always*, and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
@@ -110,8 +112,8 @@
                                (error 'find-time "unable to find a time to advance to that is greater than the current time"))
                   min-time]))
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or a 'while' condition change.
-    ; Solve all constraints in active when and while constraints.
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or is an
+    ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)
       (let ([mytime (send this milliseconds-evaluated)])
