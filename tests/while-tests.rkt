@@ -87,12 +87,45 @@
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send r get-x) 1)))
 
+(define (one-while-track-times)
+  (test-case
+   "test advance time, keeping track of the times at which the body of the while is evaluated using a hack"
+   ; CAUTION! This unit test checks the exact times the while is evaluated with a series of advance-time calls,
+   ; including ones that exactly hit the interesting times and ones that go over an interesting time.  However,
+   ; it does so by using a side effect in the 'while' (which formally isn't allowed), and further, the
+   ; interesting-times are arbitrarily chosen so that we can test the functionality - but they don't make sense
+   ; in terms of times we'd actually need to stop to account for the effects of the 'while'.
+   (define times '())
+   (define (get-times) times)
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
+              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 80))
+              (set! times (cons (send this wally-evaluate (milliseconds)) times)))))
+   (define r (new tester%))
+   (send-thing r advance-time 10)
+   (check equal? (send-syncd r milliseconds-syncd) 10)
+   (check equal? (send-syncd r evaluate-syncd get-times) '())
+   (send-thing r advance-time 50) ; should advance to 50
+   (check equal? (send-syncd r milliseconds-syncd) 50.0)
+   (check equal? (send-syncd r evaluate-syncd get-times) '(50))
+   (send-thing r advance-time 75) ; should advance to 75
+   (check equal? (send-syncd r milliseconds-syncd) 75)
+   (check equal? (send-syncd r evaluate-syncd get-times) '(75 50))
+   (send-thing r advance-time 200) ; should advance to 80 then 200
+   (check equal? (send-syncd r milliseconds-syncd) 200)
+   (check equal? (send-syncd r evaluate-syncd get-times) '(80 75 50))))
+
+
 (define while-tests 
   (test-suite+
    "run tests for while in reactive-thing"
    (one-while-interesting)
    (one-while-interesting-hop-over)
    (one-while-soft)
+   (one-while-track-times)
    ))
 
 (time (run-tests while-tests))
