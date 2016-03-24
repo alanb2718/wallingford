@@ -8,13 +8,13 @@
 
 (define flipping-pulser%
   (class pulser%
-    (inherit button-pressed image previous)
+    (inherit button-going-down? image previous)
     (super-new)
     
     ; this constraint is inherited:
     ; (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
     
-    (when (button-pressed)
+    (when (button-going-down?)
       (assert (equal? (circle-color (image))
                       (flip (previous (circle-color (image)))))))))
 

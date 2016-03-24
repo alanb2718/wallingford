@@ -77,7 +77,7 @@
   (cond [(point? g) (send dc draw-ellipse (point-x g) (point-y g) 5 5)]
         [(line? g) (send dc draw-line (point-x (line-end1 g)) (point-y (line-end1 g))
                          (point-x (line-end2 g)) (point-y (line-end2 g)))]
-        [(circle? g) (send dc set-brush (make-object color% (label (circle-color g))) 'solid)
+        [(circle? g) (send dc set-brush (send the-color-database find-color (label (circle-color g))) 'solid)
                      ; (send dc set-pen (make-object color% "blue") 2 'solid)
                      ; (printf "color ~a \n" (label (colored-circle-color g)))
                      (send dc set-pen (make-object color% (label (circle-color g))) 2 'solid)

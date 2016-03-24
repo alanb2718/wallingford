@@ -5,7 +5,8 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 
-(provide abstract-reactive-thing% send-thing send-syncd)
+(provide abstract-reactive-thing% send-thing send-syncd
+         mouse-event mouse-event-time mouse-event-pt mouse-event-button-state)
 ; Each reactive thing has its own thread.  Any messages from another thread should use send-thing
 ; or send-syncd for synchronization, rather than sending an ordinary message to the thing.
 ; Internally there are some helper functions, and also some methods for use in constraint conditions
@@ -26,6 +27,9 @@
 ; all times are relative to the time the program is started
 (define time-at-startup (current-milliseconds))
 
+; struct to hold information for a mouse or button event
+(struct mouse-event (time pt button-state) #:transparent)
+
 (define abstract-reactive-thing%
   (class thing%
     (super-new)
@@ -35,9 +39,8 @@
     (define watchers (mutable-set))
     ; alert is either a thread for the current alert, or null if none
     (define alert null)
-    ; list of times that a button down event occurred, and a matching list of locations
-    (define button-down-event-times '())
-    (define button-down-locations '())
+    ; list of pairs (time,event)
+    (define mouse-events '())
    
     ; Loop for receiving thread messages.  The 'match' part is in a separate method named
     ; match-thread-receive to allow it to be overridden or augmented in subclasses.
@@ -64,14 +67,14 @@
          (showthing (send this concrete-image) dc)
          (channel-put ch null)]
         [(list 'advance-time target)
-         (send this advance-time-helper target)]
+         (send this advance-time-and-prune-events target)]
         [(list 'advance-time)  ; version with default arg for target
-         (send this advance-time-helper (current-clock-time))]
+         (send this advance-time-and-prune-events (current-clock-time))]
         [(list 'advance-time-syncd ch target)
-         (advance-time-helper target)
+         (advance-time-and-prune-events target)
          (channel-put ch null)]
         [(list 'advance-time-syncd ch)
-         (advance-time-helper (current-clock-time))
+         (advance-time-and-prune-events (current-clock-time))
          (channel-put ch null)]
         [(list 'watched-by-syncd ch v)
          (set-add! watchers v)
@@ -82,13 +85,13 @@
          (set-remove! watchers v)
          ; if this was the last watcher terminate any alert
          (terminate-old-alert)]
-        [(list 'button-down-event event-time mx my)
-         ; to avoid cycles, assume the button down event occurred at least 1 millisecond after
-         ; the thing's current internal time
-         (set! button-down-event-times
-               (cons (max (+ 1 (send this milliseconds-evaluated)) (if (null? event-time) (current-clock-time) event-time))
-                     button-down-event-times))
-         (set! button-down-locations (cons (point mx my) button-down-locations))
+        [(list 'mouse-event event-time event-x event-y state)
+         ; Got a event from the viewer.  Add it to the list of mouse-events using the mouse-event struct.
+         ; Formerly: to avoid cycles, we assumed the event occurred at least 1 millisecond after the thing's
+         ; current internal time.  Doesn't seem necessary any more???
+         (let* ([tm (if (null? event-time) (current-clock-time) event-time)]
+                [ev (mouse-event tm (point event-x event-y) state)])
+           (set! mouse-events (cons ev mouse-events)))
          ; revise when to wake up next if need be (could be wake up right now)
          ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
          (cond [(not (set-empty? watchers)) (set-alert-helper)])]
@@ -108,19 +111,65 @@
     (define/public (get-sampling)
       (error "subclass responsibility\n"))
     
-    ; button events
-    (define/public (button-pressed)
-      (member (send this milliseconds) button-down-event-times))
-    ; If we don't have a record of mouse-position at the current time, return (point 0 0)
-    ; Maybe fix this later?  Kind of funky ....
+    ; *** button events ***
+    ; button-going-down? can test whether the button is going down at the current time, or find a time
+    ; the button is going down
+    (define/public (button-going-down?)
+      (let ([t (send this milliseconds)])
+        (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? 'going-down (mouse-event-button-state e))))
+                           mouse-events)))))
+    (define/public (button-going-up?)
+      (let ([t (send this milliseconds)])
+        (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? 'going-up (mouse-event-button-state e))))
+                           mouse-events)))))
+    ; If we don't have a record of mouse-position at the current time, interpolate between the two nearest times
+    ; note that time is evaluated for this function - we don't try to find a time that corresponds to a position
     (define/public (mouse-position)
-      (or (for/first ([t button-down-event-times]
-                      [p button-down-locations]
-                      #:when (equal? (send this milliseconds-evaluated) t))
-            p)
-          (point 0 0)))
+      (interpolate-mouse-position (send this milliseconds-evaluated) mouse-events))
+    ; return the state of the button at the current time (time is evaluated for this function also)
+    ; if we don't have an event for the exact time, use the closest previous time
+    (define/public (button-state)
+      (button-state-helper mouse-events (send this milliseconds-evaluated)))
+    ; convenience function to test for button going-down, down, or going-up
+    (define/public (button-pressed?)
+      (let ([s (send this button-state)])
+        (or (eq? s 'going-down) (eq? s 'down) (eq? s 'going-up))))
+
+    ; Helper function for mouse-position.  The events in the list are with most recent event first -- find
+    ; mouse position at the exact time, or else interpolate the mouse position between the two closest events
+    (define (interpolate-mouse-position time events)
+      (cond [(null? events) (point 0 0)]
+            ; formerly: [(null? events) (error 'interpolate-mouse-position "couldn't find a time")]
+            [(null? (cdr events)) (mouse-event-pt (car events))] ; just one event in the list
+            [(equal? time (mouse-event-time (car events))) (mouse-event-pt (car events))]  ; exact time found
+            [(> time (mouse-event-time (cadr events))) ; interpolate between the first two events on the list
+             (let* ([e1 (car events)]
+                    [e2 (cadr events)]
+                    [x1 (point-x (mouse-event-pt e1))]
+                    [y1 (point-y (mouse-event-pt e1))]
+                    [x2 (point-x (mouse-event-pt e2))]
+                    [y2 (point-y (mouse-event-pt e2))]
+                    [t1 (mouse-event-time e1)]
+                    [t2 (mouse-event-time e2)]
+                    [ratio (/ (exact->inexact (- t1 time)) (exact->inexact (- t1 t2)))]
+                    [x (- x1 (* ratio (- x1 x2)))]
+                    [y (- y1 (* ratio (- y1 y2)))])
+               (point (round x) (round y)))]
+            [else (interpolate-mouse-position time (cdr events))]))
     
-        
+    (define (button-state-helper events time)
+      (if (null? events) 'up  ; assume button starts up
+          (let* ([e1 (car events)]
+                 [t1 (mouse-event-time e1)]
+                 [s1 (mouse-event-button-state e1)])
+            (cond  [(= t1 time) s1] ; found exact time
+                   [(> t1 time) (button-state-helper (cdr events) time)] ; keep looking
+                   ; If we get this far, the time for the most recent event in the list 'events' is before 'time'.
+                   ; If the button was going down at some time before 'time', then it is down at 'time'.
+                   [(eq? s1 'going-down) 'down]
+                   [(eq? s1 'down) 'down]
+                   [else 'up]))))
+    
     ; Methods to access time
     (define/public-final (current-clock-time)
       (- (current-milliseconds) time-at-startup))
@@ -145,8 +194,8 @@
     (define/public (set-image! newimage)
       (set! myimage newimage))
     
-    (define/public (get-button-down-event-times)
-      button-down-event-times)
+    (define/public (get-mouse-events)
+      mouse-events)
     
     (define/public-final (get-thread) mythread)
 
@@ -173,6 +222,20 @@
     ; separate assertion stack, leaving alone the global stack and solution.
     (define/public (find-time mytime target)
       (error "subclass responsibility\n"))
+
+    (define/public (advance-time-and-prune-events target)
+      (send this advance-time-helper target)
+      ; prune all events that occurred before the current time - except leave one older event in the list
+      ; (needed for interpolating mouse position)
+     (set! mouse-events (pruned-event-list mouse-events (send this milliseconds-evaluated))))
+
+    ; helper function to return a new event list that includes only events that occurred after time t
+    ; (leaving one older event)
+    (define (pruned-event-list events t)
+      (cond [(null? events) events]
+            [(null? (cdr events)) events]
+            [(< (mouse-event-time (car events)) t) (list (car events))]
+            [else (cons (car events) (pruned-event-list (cdr events) t))]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.

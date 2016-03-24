@@ -10,8 +10,11 @@
  "electrical-things-tests.rkt"
  "electrical-things-dynamic-tests.rkt"
  "reactive-thing-tests.rkt"
+ "mouse-tests.rkt"
  "when-tests.rkt"
-; "while-tests.rkt"  temporarily disabled
+ "while-tests.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
- "compiled-when-tests.rkt")
+ "compiled-when-tests.rkt"
+ "compiled-while-tests.rkt"
+ )

@@ -31,9 +31,14 @@
         [(list 'refresh-syncd ch)
          (refresh-helper)
          (channel-put ch null)]
-        [(list 'viewer-button-down-event event-time x y)
-         ; for now always send the event along - later only send it if the watched cares about button down events
-         (send-thing my-thing button-down-event event-time x y)]
+        [(list 'viewer-mouse-event event-time event)
+         ; for now always send the event info along - later only send it if the watched cares about such events
+         ; arguments are the event time, x, y, and button-state
+         (send-thing my-thing mouse-event event-time (send event get-x) (send event get-y)
+                     (cond [(send event button-down?) 'going-down]
+                           [(send event button-up?) 'going-up]
+                           [(send event get-left-down) 'down]
+                           [else 'up]))]
         [_
          (super match-thread-receive r)]))
     
@@ -86,11 +91,10 @@
     (define myviewer null)  ; hack - initialize myviewer later to avoid initialization cycle
     (define/public (set-viewer v) 
       (set! myviewer v))
-    ; Define overriding method to handle mouse events
+    ; Catch mouse events (moving or button up or button down)
     (define/override (on-event event)
-      ; note we can't call this statement 'when'!
-      (cond [(send event button-down?)
-             (send-thing myviewer viewer-button-down-event null (send event get-x) (send event get-y))]))
+      (cond [(or (send event button-changed?) (send event moving?))
+             (send-thing myviewer viewer-mouse-event null event)]))
     ; Call the superclass init, passing on all init args
     (super-new)))
 

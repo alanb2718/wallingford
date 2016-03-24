@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for compiled-reactive-thing% -- these should be parallel to the tests for reactive-thing%
+;; unit tests for 'when' in compiled-reactive-thing% -- these should be parallel to when-tests.rkt
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")

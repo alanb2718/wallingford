@@ -2,6 +2,7 @@
 ; hand compiled code for flipper
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")
+(require "abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
 
 (define (flip c)
@@ -9,7 +10,7 @@
 
 (define compiled-flipper%
   (class compiled-reactive-thing%
-    (inherit seconds image button-pressed)
+    (inherit seconds image button-going-down?)
     (super-new)
     (send this set-image! (circle (point 150 150) 50 (color "blue")))
     
@@ -18,18 +19,21 @@
       '(push))
     (define/override (update-mysolution)
       ; compiling for this constraint:
-      ; (when (button-pressed)
+      ; (when (button-going-down?)
       ;  (assert (equal? (circle-color (image))
       ;                  (flip (previous (circle-color (image)))))))))
       ; So if the button is pressed update the image with the flipped color
-      (cond [(button-pressed)
+      (cond [(button-going-down?)
              (send this set-image!
                    (struct-copy circle (image) [color (flip (circle-color (image)))]))]))
     (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
-      ; get-button-down-event-times
-      (let ([potential-targets (filter (lambda (t) (and (> t mytime) (< t target)))
-                                       (send this get-button-down-event-times))])
-        (if (null? potential-targets) target (car potential-targets))))))
+      (let ([potential-targets (filter (lambda (e) (and (> (mouse-event-time e) mytime)
+                                                        (< (mouse-event-time e) target)
+                                                        (eq? (mouse-event-button-state e) 'going-down)))
+                                       (send this get-mouse-events))])
+        (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets)))))))
 
 (make-viewer (new compiled-flipper%) #:title "Compiled version of flipper" #:sleep-time 0.01)
+
+

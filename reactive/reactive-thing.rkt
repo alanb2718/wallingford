@@ -54,9 +54,13 @@
              ; if any of the always* constraints include a temporal reference, sampling should include pull
              (cond [(includes-one-of (send this get-always*-code) '((seconds) (milliseconds)))
                     (set! sampling (cons 'pull sampling))])
-             ; if there are when or while constraints, sampling should include push
-             (cond [(or (not (null? when-holders)) (not (null? while-holders)))
-                    (set! sampling (cons 'push sampling))])])
+             ; if there are when constraints, sampling should include push
+             (cond [(not (null? when-holders))
+                    (set! sampling (cons 'push sampling))])
+             ; if there are while constraints, for now sampling should be push pull
+             ; (since this subsumes the other possibilities, just override)
+             (cond [(not (null? while-holders))
+                    (set! sampling '(push pull))])])
       sampling)
     ; Helper function for get-sampling.  items should be a list of temporal function calls.
     ; Return true if code contains one of the calls.

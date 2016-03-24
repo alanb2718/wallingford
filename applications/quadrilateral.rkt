@@ -71,7 +71,6 @@
 (define selected-point #f)
 
 (define (select-point event)
-  (define ev-points (map (lambda (p) (send picture wally-evaluate p)) points))
   (define x (send event get-x))
   (define y (send event get-y))
   (set! selected-point (findf (lambda (p) (close x y p)) points)))

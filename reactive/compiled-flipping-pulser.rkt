@@ -2,6 +2,7 @@
 ; hand compiled code for pulsing circle example
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")
+(require "abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
 
 (define (flip c)
@@ -9,7 +10,7 @@
 
 (define compiled-flipping-pulser%
   (class compiled-reactive-thing%
-    (inherit seconds image button-pressed)
+    (inherit seconds image button-going-down?)
     (super-new)
     (send this set-image! (circle (point 150 150) 50 (color "blue")))
     
@@ -19,17 +20,19 @@
     (define/override (update-mysolution)
       ; compiling for these constraints:
       ;    (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))))
-      ;(when (button-pressed)
+      ;(when (button-going-down?)
       ;  (assert (equal? (circle-color (image))
       ;                  (flip (previous (circle-color (image)))))))))
-      (let ([newcolor (if (button-pressed) (flip (circle-color (image))) (circle-color (image)))])
+      (let ([newcolor (if (button-going-down?) (flip (circle-color (image))) (circle-color (image)))])
         (send this set-image! (struct-copy circle (image)
                                                [radius  (+ 60 (* 50 (sin (seconds))))]
                                                [color newcolor]))))
     (define/override (find-time mytime target)
-      ; if there are button presses between the current time and target, advance to the earliest one, and otherwise to target
-      (let ([potential-targets (filter (lambda (t) (and (> t mytime) (< t target)))
-                                       (send this get-button-down-event-times))])
-        (if (null? potential-targets) target (apply min potential-targets))))))
+      ; if there is a button press between the current time and target, advance to that, and otherwise to target
+      (let ([potential-targets (filter (lambda (e) (and (> (mouse-event-time e) mytime)
+                                                        (< (mouse-event-time e) target)
+                                                        (eq? (mouse-event-button-state e) 'going-down)))
+                                       (send this get-mouse-events))])
+        (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets)))))))
 
 (make-viewer (new compiled-flipping-pulser%) #:sleep-time 0.05)
