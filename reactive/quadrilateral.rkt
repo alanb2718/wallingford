@@ -42,7 +42,7 @@
     ; initialize the locations of the sides (the midpoints and parallelogram sides can take care of themselves)
     (assert (equal? (line-end1 (midpointline-line side1)) (point 250  50)))
     (assert (equal? (line-end1 (midpointline-line side2)) (point 550 250)))
-    (assert (equal? (line-end1 (midpointline-line side3)) (point 250 550)))
+    (assert (equal? (line-end1 (midpointline-line side3)) (point 250 500)))
     (assert (equal? (line-end1 (midpointline-line side4)) (point  50 250)))
     
     ; the image for this is just a list of the component parts
