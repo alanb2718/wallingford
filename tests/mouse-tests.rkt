@@ -74,7 +74,7 @@
    (check equal? (get-button-pressed? r1) #f)
    (send-thing r1 advance-time 100)
    (check equal? (get-state r1) 'going-down)
-   (check equal? (get-button-pressed? r1) #t)
+   (check equal? (get-button-pressed? r1) #f)
    (send-thing r1 advance-time 101)
    (check equal? (get-state r1) 'down)
    (check equal? (get-button-pressed? r1) #t)

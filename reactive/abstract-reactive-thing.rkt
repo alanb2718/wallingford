@@ -130,10 +130,10 @@
     ; if we don't have an event for the exact time, use the closest previous time
     (define/public (button-state)
       (button-state-helper mouse-events (send this milliseconds-evaluated)))
-    ; convenience function to test for button going-down, down, or going-up
+    ; convenience function to test for button down or going-up
     (define/public (button-pressed?)
       (let ([s (send this button-state)])
-        (or (eq? s 'going-down) (eq? s 'down) (eq? s 'going-up))))
+        (or (eq? s 'down) (eq? s 'going-up))))
 
     ; Helper function for mouse-position.  The events in the list are with most recent event first -- find
     ; mouse position at the exact time, or else interpolate the mouse position between the two closest events
