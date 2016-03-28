@@ -18,9 +18,9 @@
 ; 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
 ; 'while' that will affect future state.  There are currently two simple cases for which the system can synthesize
 ; #:interesting-time, namely checking for button-pressed? and checking for milliseconds within a given range (with a
-; very rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
+; rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
 (define-syntax while
-  (syntax-rules (and <= button-pressed? milliseconds)
+  (syntax-rules (and <= >= button-pressed? milliseconds)
     ((while test #:interesting-time interesting e ...)
      (send this add-while (while-holder (lambda () test) (lambda () interesting) (lambda () e ...))))
     ((while (button-pressed?) e ...)
@@ -30,8 +30,18 @@
     ; for some reason this version doesn't work:
     ; ((while (button-pressed?) e ...)
     ;  (while (button-pressed?) #:interesting-time (lambda () (send this button-going-up?)) e ...))
-    ((while (and (<= lower (milliseconds)) (<= (milliseconds) upper)) e ...)
-     (send this add-while (while-holder (lambda () (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper)))
+    ;
+    ; The versions that check if milliseconds is within a given range assume a test like this:
+    ;   (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100)) ...
+    ; or this:
+    ;   (while (and (<= 50 (milliseconds)) (>= 100 (milliseconds))) ...
+    ; The lower bound test is assumed to be syntactically correct - no error checking on it
+    ((while (and lower-test (<= (milliseconds) upper)) e ...)
+     (send this add-while (while-holder (lambda () (and lower-test (<= (send this milliseconds) upper)))
+                                        (lambda () (equal? (send this milliseconds) upper))
+                                        (lambda () e ...))))
+    ((while (and lower-test (>= upper (milliseconds))) e ...)
+     (send this add-while (while-holder (lambda () (and lower-test (>= upper (send this milliseconds))))
                                         (lambda () (equal? (send this milliseconds) upper))
                                         (lambda () e ...))))
     ((while test e ...)

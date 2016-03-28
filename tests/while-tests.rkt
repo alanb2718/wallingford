@@ -71,8 +71,29 @@
        (assert (equal? x 5))
        (send this solve)
        (stay x)
-       ; need to follow the currently rigid syntax for time ranges ....
        (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100))
+              (assert (equal? x (milliseconds))))
+       (define/public (get-x) (send this wally-evaluate x))))
+   (define r (new tester%))
+   (send-thing r advance-time 10)
+   (check equal? (send-syncd r milliseconds-syncd) 10)
+   (check equal? (send r get-x) 5)
+   (send-thing r advance-time 150)
+   (check equal? (send-syncd r milliseconds-syncd) 150)
+   (check equal? (send r get-x) 100)))
+
+(define (one-while-hop-over-synthesize-interesting-time-variant)
+  (test-case
+   "same as one-while-hop-over-synthesize-interesting-time except for a slightly different test"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* x real?)
+       (assert (equal? x 5))
+       (send this solve)
+       (stay x)
+       (while (and (<= 50 (milliseconds)) (>= 100 (milliseconds)))
               (assert (equal? x (milliseconds))))
        (define/public (get-x) (send this wally-evaluate x))))
    (define r (new tester%))
@@ -85,14 +106,12 @@
 
 (define (too-hard-to-synthesize-interesting-time)
   (test-case
-   "same as one-while-hop-over, but let the system synthesize the #:interesting-time function"
+   "a while with a condition that is too hard for the system to synthesize the #:interesting-time function"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       ; the syntax is slightly off for the system to synthesize the interesting-time function, so it
-       ; should raise an exception
-       (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
+       (while (and (>= (milliseconds) 50) (<= (+ 1 (milliseconds)) 100))
               (assert #t))))
    (check-exn
     exn:fail?
@@ -192,6 +211,7 @@
    (one-while)
    (one-while-hop-over)
    (one-while-hop-over-synthesize-interesting-time)
+   (one-while-hop-over-synthesize-interesting-time-variant)
    (too-hard-to-synthesize-interesting-time)
    (one-while-soft)
    (one-while-button-pressed-synthesize-interesting-time)
