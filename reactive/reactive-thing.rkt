@@ -14,15 +14,28 @@
 ; Note that 'when' overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
   (send this add-when (when-holder (lambda () test) (lambda () e ...))))
-; interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
-; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may
-; happen in the 'while' that will affect future state.  The default is that no times are interesting.
+; #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time is an
+; 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
+; 'while' that will affect future state.  There are currently two simple cases for which the system can synthesize
+; #:interesting-time, namely checking for button-pressed? and checking for milliseconds within a given range (with a
+; very rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
 (define-syntax while
-  (syntax-rules ()
+  (syntax-rules (and <= button-pressed? milliseconds)
     ((while test #:interesting-time interesting e ...)
      (send this add-while (while-holder (lambda () test) (lambda () interesting) (lambda () e ...))))
+    ((while (button-pressed?) e ...)
+     (send this add-while (while-holder (lambda () (send this button-pressed?))
+                                        (lambda () (send this button-going-up?))
+                                        (lambda () e ...))))
+    ; for some reason this version doesn't work:
+    ; ((while (button-pressed?) e ...)
+    ;  (while (button-pressed?) #:interesting-time (lambda () (send this button-going-up?)) e ...))
+    ((while (and (<= lower (milliseconds)) (<= (milliseconds) upper)) e ...)
+     (send this add-while (while-holder (lambda () (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper)))
+                                        (lambda () (equal? (send this milliseconds) upper))
+                                        (lambda () e ...))))
     ((while test e ...)
-     (send this add-while (while-holder (lambda () test) (lambda () #f) (lambda () e ...))))))
+     (error 'while "unable to automatically synthesize #:interesting-time function"))))
 ; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
 (struct while-holder (condition interesting body) #:transparent)

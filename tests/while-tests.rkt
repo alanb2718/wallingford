@@ -8,7 +8,7 @@
 
 (provide while-tests)
 
-(define (one-while-interesting)
+(define (one-while)
   (test-case
    "test advance time with one while and the start and end of the while identified as interesting times"
    (define tester%
@@ -37,9 +37,9 @@
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send r get-x) 100)))
 
-(define (one-while-interesting-hop-over)
+(define (one-while-hop-over)
   (test-case
-   "same as one-while-interesting, but hop over the whole interval"
+   "same as one-while, but hop over the whole interval"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)
@@ -59,6 +59,44 @@
    (send-thing r advance-time 150)
    (check equal? (send-syncd r milliseconds-syncd) 150)
    (check equal? (send r get-x) 100)))
+
+(define (one-while-hop-over-synthesize-interesting-time)
+  (test-case
+   "same as one-while-hop-over, but let the system synthesize the #:interesting-time function"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* x real?)
+       (assert (equal? x 5))
+       (send this solve)
+       (stay x)
+       ; need to follow the currently rigid syntax for time ranges ....
+       (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100))
+              (assert (equal? x (milliseconds))))
+       (define/public (get-x) (send this wally-evaluate x))))
+   (define r (new tester%))
+   (send-thing r advance-time 10)
+   (check equal? (send-syncd r milliseconds-syncd) 10)
+   (check equal? (send r get-x) 5)
+   (send-thing r advance-time 150)
+   (check equal? (send-syncd r milliseconds-syncd) 150)
+   (check equal? (send r get-x) 100)))
+
+(define (too-hard-to-synthesize-interesting-time)
+  (test-case
+   "same as one-while-hop-over, but let the system synthesize the #:interesting-time function"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       ; the syntax is slightly off for the system to synthesize the interesting-time function, so it
+       ; should raise an exception
+       (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
+              (assert #t))))
+   (check-exn
+    exn:fail?
+    (lambda () (new tester%)))))
 
 (define (one-while-soft)
   (test-case
@@ -86,6 +124,35 @@
    (send-thing r advance-time 200)
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send r get-x) 1)))
+
+(define (one-while-button-pressed-synthesize-interesting-time)
+  (test-case
+   "let the system synthesize the #:interesting-time function for a button-pressed? test"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* x real?)
+       (assert (equal? x 5))
+       (send this solve)
+       (stay x)
+       (while (button-pressed?)
+              (assert (equal? x (milliseconds))))
+       (define/public (get-x) (send this wally-evaluate x))))
+   (define r (new tester%))
+   (send-thing r mouse-event   0 0 0 'up)
+   (send-thing r mouse-event 100 0 0 'going-down)
+   (send-thing r mouse-event 110 0 0 'down)
+   (send-thing r mouse-event 200 0 0 'going-up)
+   (send-thing r advance-time 10)
+   (check equal? (send-syncd r milliseconds-syncd) 10)
+   (check equal? (send r get-x) 5)
+   (send-thing r advance-time 120)
+   (check equal? (send-syncd r milliseconds-syncd) 120)
+   (check equal? (send r get-x) 120)
+   (send-thing r advance-time 500)
+   (check equal? (send-syncd r milliseconds-syncd) 500)
+   (check equal? (send r get-x) 200)))
 
 (define (one-while-track-times)
   (test-case
@@ -122,9 +189,12 @@
 (define while-tests 
   (test-suite+
    "run tests for while in reactive-thing"
-   (one-while-interesting)
-   (one-while-interesting-hop-over)
+   (one-while)
+   (one-while-hop-over)
+   (one-while-hop-over-synthesize-interesting-time)
+   (too-hard-to-synthesize-interesting-time)
    (one-while-soft)
+   (one-while-button-pressed-synthesize-interesting-time)
    (one-while-track-times)
    ))
 
