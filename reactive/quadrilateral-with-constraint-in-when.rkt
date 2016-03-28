@@ -50,38 +50,39 @@
     (send this set-image! (list side1 side2 side3 side4 mid1 mid2 mid3 mid4))
     
     ; make a vector of all the corners and midpoints for dragging
-    (define points (vector-immutable (line-end1 (midpointline-line side1))
-                                     (line-end1 (midpointline-line side2))
-                                     (line-end1 (midpointline-line side3))
-                                     (line-end1 (midpointline-line side4))
-                                     (midpointline-midpoint side1)
-                                     (midpointline-midpoint side2)
-                                     (midpointline-midpoint side3)
-                                     (midpointline-midpoint side4)))
+    (define points (list (line-end1 (midpointline-line side1))
+                         (line-end1 (midpointline-line side2))
+                         (line-end1 (midpointline-line side3))
+                         (line-end1 (midpointline-line side4))
+                         (midpointline-midpoint side1)
+                         (midpointline-midpoint side2)
+                         (midpointline-midpoint side3)
+                         (midpointline-midpoint side4)))
     
     ; selected is the index in 'points' of the point being dragged, or -1 if none
     (define-symbolic* selected integer?)
     (stay selected)
+    
     (when (button-going-down?)
-      (assert (equal? selected (find-close (send this mouse-position)))))
+      (let* ([mp (send this mouse-position)]
+             [idx (for/first ([(p i) (in-indexed points)]
+                      #:when (close? (send this wally-evaluate p) mp))
+                     i)])
+        (cond [idx (assert (equal? selected idx))])))
+
     (when (button-going-up?)
       (assert (equal? selected -1)))
     
     (while (button-pressed?)
            ; evaluate selected, since we don't want to change the selection to satisfy the constraint in the while!
            (let ([i (send this wally-evaluate selected)])
-             (racket-when (> i -1)
-                          (assert (equal? (mouse-position) (vector-ref points i))))))
-    ; return the index of a point close to the mouse position, or -1 if none found
-    (define (find-close mp)
-      (let ([index (for/first ([i (vector-length points)]
-                               #:when (close (send this wally-evaluate (vector-ref points i)) mp))
-                     i)])
-        (if index index -1)))
+             (cond [(> i -1) (assert (equal? (mouse-position) (list-ref points i)))])))
+   
     
-    (define (close p1 p2)
+    (define (close? p1 p2)
       (define gap 10)
-      (and (< (abs (- (point-x p1) (point-x p2))) gap) (< (abs (- (point-y p1) (point-y p2))) gap)))
+      (and (< (abs (- (point-x p1) (point-x p2))) gap)
+           (< (abs (- (point-y p1) (point-y p2))) gap)))
     
     
     (send this solve)))
