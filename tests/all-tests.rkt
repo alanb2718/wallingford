@@ -5,7 +5,7 @@
 
 (run-all-tests
  "wallingford-core-tests.rkt"
- "always-star-tests.rkt"
+ "always-dynamic-tests.rkt"
  "geothings-tests.rkt"
  "electrical-things-tests.rkt"
  "electrical-things-dynamic-tests.rkt"

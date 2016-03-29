@@ -76,7 +76,7 @@
        (inherit button-going-down? image previous)
        (super-new)
        ; this constraint is inherited:
-       ; (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
+       ; (always (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
        (when (button-going-down?)
          (assert (equal? (circle-color (image))
                          (flip (previous (circle-color (image)))))))))

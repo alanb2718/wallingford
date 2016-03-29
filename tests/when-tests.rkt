@@ -46,7 +46,7 @@
        (inherit milliseconds)
        (super-new)
        (define-symbolic* m real?)
-       (always* (equal? m (milliseconds)))
+       (always (equal? m (milliseconds)))
        (when (equal? m 100)
          (set! count (+ 1 count)))))
    
@@ -74,7 +74,7 @@
        (inherit milliseconds)
        (super-new)
        (define-symbolic* m real?)
-       (always* (equal? m (milliseconds)) #:priority low)
+       (always (equal? m (milliseconds)) #:priority low)
        (when (equal? m 100)
          #t)))
    (define r (new one-when-tester%))

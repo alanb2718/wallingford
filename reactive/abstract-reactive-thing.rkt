@@ -176,8 +176,7 @@
     ; Other time access methods.  These other methods don't directly use the thing's thread -- instead they
     ; are intended to always be called from code the thread is running
     ; The (seconds) method returns the current time in seconds as a float.  This is evaluated (mostly so
-    ; that it can be used as an argument to sin).  Note that if used in a constraint, the constraint needs
-    ; to use always* rather than always so that (seconds) is re-evaluated each time.
+    ; that it can be used as an argument to sin).
     ; (milliseconds should be overridden in subclasses to return the thing's current idea of its own time.
     ; It can be symbolic.
     (define/public (milliseconds)

@@ -74,8 +74,8 @@
       ; (this doesn't support dynamically adding constraints during the time the thing is running)
       (cond [(not sampling)
              (set! sampling null)
-             ; if any of the always* constraints include a temporal reference, sampling should include pull
-             (cond [(includes-one-of (send this get-always*-code) '((seconds) (milliseconds)))
+             ; if any of the always constraints include a temporal reference, sampling should include pull
+             (cond [(includes-one-of (send this get-always-code) '((seconds) (milliseconds)))
                     (set! sampling (cons 'pull sampling))])
              ; if there are when constraints, sampling should include push
              (cond [(not (null? when-holders))
@@ -121,7 +121,7 @@
                               (and (< symbolic-time target)
                                    (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
                                        (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
-                  ; add all required always, always*, and stays to the solver
+                  ; add all required always constraints and stays to the solver
                   (send this solver-add-required solver)
                   (solver-assert solver (asserts))
                   (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective

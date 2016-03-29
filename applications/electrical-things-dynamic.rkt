@@ -1,6 +1,6 @@
 #lang s-exp rosette
 ; Version of electrical things that allows for dynamically adding and removing components by
-; changing the set of leads connected to a node.  Uses always* to enable this.
+; changing the set of leads connected to a node.
 
 (require "../core/wallingford.rkt")
 
@@ -26,7 +26,7 @@
   ; this constraint will stick around for nodes that are no longer used - this may lead to
   ; efficiency problems after a while.  (Solutions: explicitly remove old constraints, or 
   ; garbage collect ones that aren't applicable to any visible objects.)
-  (always* (equal? 0 (foldl + 0 (map lead-current (node-leads nd)))) #:owner circuit)
+  (always (equal? 0 (foldl + 0 (map lead-current (node-leads nd)))) #:owner circuit)
   nd)
 
 ; make a new lead that connects to the given node, or create a new node if needed
@@ -41,10 +41,8 @@
   (define-symbolic* internal-voltage real?)
   (define plus (make-lead circuit))
   (define minus (make-lead circuit))
-  ; since we are allowing nodes to be changed we need to make the first of these constraints dynamic as well
-  ; (the second one doesn't actually need to be dynamic but I just left it that way for consistency)
-  (always* (equal? internal-voltage (- (node-voltage (lead-node plus)) (node-voltage (lead-node minus)))) #:owner circuit)
-  (always* (equal? 0 (+ (lead-current plus) (lead-current minus))) #:owner circuit)
+  (always (equal? internal-voltage (- (node-voltage (lead-node plus)) (node-voltage (lead-node minus)))) #:owner circuit)
+  (always (equal? 0 (+ (lead-current plus) (lead-current minus))) #:owner circuit)
   (unless (null? intv) (always (equal? internal-voltage intv) #:owner circuit))
   (battery plus minus internal-voltage))
 
@@ -52,22 +50,21 @@
   (define-symbolic* resistance real?)
   (define lead1 (make-lead circuit))
   (define lead2 (make-lead circuit))
-  ; similarly the first of these constraints needs to be dynamic
-  (always* (equal? (- (node-voltage (lead-node lead2)) (node-voltage (lead-node lead1))) (* resistance (lead-current lead1)))
+  (always (equal? (- (node-voltage (lead-node lead2)) (node-voltage (lead-node lead1))) (* resistance (lead-current lead1)))
            #:owner circuit)
-  (always* (equal? 0 (+ (lead-current lead1) (lead-current lead2))) #:owner circuit)
+  (always (equal? 0 (+ (lead-current lead1) (lead-current lead2))) #:owner circuit)
   (unless (null? r) (always (equal? resistance r) #:owner circuit))
   (resistor lead1 lead2 resistance))
 
 (define (make-ground circuit)
   (define ld (make-lead circuit))
-  (always* (equal? 0 (node-voltage (lead-node ld))) #:owner circuit)
-  (always* (equal? 0 (lead-current ld)) #:owner circuit)
+  (always (equal? 0 (node-voltage (lead-node ld))) #:owner circuit)
+  (always (equal? 0 (lead-current ld)) #:owner circuit)
   ld)
 
 ; Connect a list of leads together by making a new node and plugging that node into each lead.
 ; It shouldn't matter if some of the leads are already connected - we make a fresh node
-; and use that.  (The old nodes will have always* Kirchhoff's law constraints, which will
+; and use that.  (The old nodes will have always Kirchhoff's law constraints, which will
 ; persist.  This should be harmless although could be a cause of inefficiencies.)
 (define (connect circuit leads)
   (let ((all-leads null)
@@ -78,7 +75,7 @@
       (unless (memq ld2 all-leads) (set! all-leads (cons ld2 all-leads)))))
     (set-node-leads! new-node all-leads)
     (for ([ld all-leads])
-      ; nuke the old set of leads for the node at the end of this lead, so that its always*
+      ; nuke the old set of leads for the node at the end of this lead, so that its always
       ; constraint on the currents doesn't mess things up
       (set-node-leads! (lead-node ld) null)
       (set-lead-node! ld new-node))))

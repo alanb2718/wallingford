@@ -12,7 +12,7 @@
     (super-new)
     
     ; this constraint is inherited:
-    ; (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
+    ; (always (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))
     
     (when (zero? (remainder (milliseconds) 2000))
       (assert (equal? (circle-color (image))

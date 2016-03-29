@@ -23,7 +23,7 @@
     (define actual-offset null)
     (send this set-image! my-image)
     (define mp (make-point))
-    (always* (equal? mp (mouse-position)))
+    (always (equal? mp (mouse-position)))
     (define potential-targets (filter (lambda (c) (contains-point c mp)) (unbox my-image)))
     (when (button-going-down?)
       (cond [(pair? potential-targets)
