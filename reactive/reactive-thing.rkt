@@ -177,9 +177,12 @@
                  (for-each (lambda (w) ((while-holder-body w))) active-whiles)
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
+                 ; notify watchers if the sampling regime has changed
+                 ; TODO - FILL THIS IN
                  ; If any whens or whiles were activated tell the viewers that this thing might have changed.  (It might
                  ; not actually have changed but that's ok -- we just don't want to miss telling them if it did.)
-                 ; TODO: this test ought to be that a while is active and will become inactive on any further advance-time
+                 ; TODO: this test seems too strong - do we only care if a while just became active, but not if it was
+                 ; already active???
                  (cond [(and (null? active-whens) (null? active-whiles)) (void)]
                        [else (send this notify-watchers-changed)])
                  ; if we didn't get to the target try again
