@@ -210,10 +210,13 @@
     (define/public (get-watchers)
       watchers)
 
-    (define/public-final (notify-watchers)
+    (define/public-final (notify-watchers-changed)
       ; Notify any viewers that this thing has changed.  (It might not actually
       ; have changed but that's ok -- we just don't want to miss telling them if it did.)
       (for/set ([w watchers]) (send-thing w thing-changed)))
+    (define/public-final (notify-watchers-update-sampling)
+      ; Notify any viewers that they should update their sampling regime for this thing.
+      (for/set ([w watchers]) (send-thing w update-sampling)))
     
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' condition true.  If there aren't any values between the current time and the target that makes

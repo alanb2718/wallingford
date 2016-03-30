@@ -12,25 +12,24 @@
 ; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
 ; or a subclass since they reference 'this'.
 ;
-; 'when'.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
+; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
-  (send this add-when (when-holder (lambda () test) (lambda () e ...))))
-; 'while'.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
+  (send this add-when-holder (when-holder (lambda () test) (lambda () e ...))))
+; 'while' macro.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
 ; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
 ; 'while' that will affect future state.  There are currently two simple cases for which the system can synthesize
 ; #:interesting-time, namely checking for button-pressed? and checking for milliseconds within a given range (with a
 ; rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
 (define-syntax while
   (syntax-rules (and <= >= button-pressed? milliseconds)
-    ((while test #:interesting-time interesting e ...)
-     (send this add-while (while-holder (gensym) (lambda () test) (lambda () interesting) (lambda () e ...))))
+    ((while condition #:interesting-time interesting e ...)
+     (add-while condition interesting e ...))
     ((while (button-pressed?) e ...)
-     (send this add-while (while-holder (gensym)
-                                        (lambda () (send this button-pressed?))
-                                        (lambda () (cond [(send this button-going-down?) 'first]
-                                                         [(send this button-going-up?) 'last]
-                                                         [else #f]))
-                                        (lambda () e ...))))
+     (add-while (send this button-pressed?)
+                (cond [(send this button-going-down?) 'first]
+                      [(send this button-going-up?) 'last]
+                      [else #f])
+                e ...))
     ; The versions that check if milliseconds is within a given range assume a test like this:
     ;   (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100)) ...
     ; or this:
@@ -46,17 +45,30 @@
      (add-while-with-time-bounds lower upper e ...))
     ((while test e ...)
      (error 'while "unable to automatically synthesize #:interesting-time function"))))
-; add-while-with-time-bounds is a helper macro (just for internal use)
+; add-while and add-while-with-time-bounds are helper macros (just for internal use)
+(define-syntax-rule (add-while condition interesting e ...)
+  (send this add-while-holder (while-holder (if (pull-sampling? '(e ...)) (gensym) #f)
+                                            (lambda () condition)
+                                            (lambda () interesting)
+                                            (lambda () e ...))))
 (define-syntax-rule (add-while-with-time-bounds lower upper e ...)
-  (send this add-while (while-holder (gensym)
-                                     (lambda () (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper)))
-                                     (lambda () (cond [(equal? lower (send this milliseconds)) 'first]
-                                                      [(equal? upper (send this milliseconds)) 'last]
-                                                      [else #f]))
-                                     (lambda () e ...))))
+  (add-while (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper))
+             (cond [(equal? lower (send this milliseconds)) 'first]
+                   [(equal? upper (send this milliseconds)) 'last]
+                   [else #f])
+             e ...))
 ; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
-(struct while-holder (id condition interesting body) #:transparent)
+; for while-holder, pull-id is either a unique symbol (if pull sampling should be used while this 'while' is active, or #f if not
+(struct while-holder (pull-id condition interesting body) #:transparent)
+; Helper functions for get-sampling and adding while constraints.
+(define (pull-sampling? code)
+  (includes-one-of code '((seconds) (milliseconds) (button-pressed?))))
+(define (includes-one-of code items)
+  ; items should be a list of temporal function calls. Return true if code contains one of the calls.
+  (cond [(member code items) #t]
+        [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
+        [else #f]))
 
 (define reactive-thing%
   (class abstract-reactive-thing%
@@ -74,36 +86,10 @@
     (define/public (previous expr)
       (send this wally-evaluate expr))
     
-    ; sampling says how to sample.  It starts out as #f, and then is set the first time the (get-sampling)
-    ; function is called.  After that it is one of '(push) '(pull) '(push pull) or '()
-    (define sampling #f)
-    (define/override (get-sampling)
-      ; if sampling is #f, compute what it should be and set it
-      ; (this doesn't support dynamically adding constraints during the time the thing is running)
-      (cond [(not sampling)
-             (set! sampling null)
-             ; if any of the always constraints include a temporal reference, sampling should include pull
-             (cond [(includes-one-of (send this get-always-code) '((seconds) (milliseconds)))
-                    (set! sampling (cons 'pull sampling))])
-             ; if there are when constraints, sampling should include push
-             (cond [(not (null? when-holders))
-                    (set! sampling (cons 'push sampling))])
-             ; if there are while constraints, for now sampling should be push pull
-             ; (since this subsumes the other possibilities, just override)
-             (cond [(not (null? while-holders))
-                    (set! sampling '(push pull))])])
-      sampling)
-    ; Helper function for get-sampling.  items should be a list of temporal function calls.
-    ; Return true if code contains one of the calls.
-    (define (includes-one-of code items)
-      (cond [(member code items) #t]
-            [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
-            [else #f]))
-        
     ; handling 'when' and 'while'
-    (define/public (add-when holder)
+    (define/public (add-when-holder holder)
       (set! when-holders (cons holder when-holders)))
-    (define/public (add-while holder)
+    (define/public (add-while-holder holder)
       (set! while-holders (cons holder while-holders)))
     
     (define/override (milliseconds)
@@ -113,7 +99,28 @@
     
     (define/override (concrete-image)
       (send this wally-evaluate (send this image)))
-
+    
+    ; The variables push-sampling and pull-sampling say whether to do push or pull sampling respectively.
+    ; push-sampling starts out as null, and then is set to #t or #f the first time the (get-sampling) function
+    ; is called.  pull-sampling starts out as an empty set.  Whenever we enter a 'while' that needs pull sampling,
+    ; we add the id for that 'while' to the pull-sampling set, and when we leave the 'while' we remove it.  In
+    ; addition, if there are 'always' constraints that imply we need to do pull sampling for the lifetime of
+    ; the entire program, we add an id to pull-sampling (and never remove it).  So if pull-sampling is a non-empty
+    ; set, we do pull sampling at that time.
+    (define push-sampling null)
+    (define pull-sampling (mutable-set))
+    ; The get-sampling method should return one of '() '(push) '(pull) or '(push pull)
+    (define/override (get-sampling)
+      (cond [(null? push-sampling)  ; need to initialize things
+             ; if there are when or while constraints, sampling should include push
+             (cond [(or (not (null? when-holders)) (not (null? while-holders))) (set! push-sampling #t)]
+                   [else (set! push-sampling #f)])
+             ; If any of the always constraints include a temporal reference, sampling should always include pull,
+             ; so add a token (for no good reason named 'always) to the hash that will always be there.
+             (cond [(pull-sampling? (send this get-always-code)) (set-add! pull-sampling 'always)])])
+      ; finally, return the kind of sampling to use
+      (append (if push-sampling '(push) '()) (if (set-empty? pull-sampling) '() '(pull))))
+    
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' condition true or is an interesting time for a 'while'.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
@@ -162,7 +169,7 @@
                  (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w))))
                                               when-holders))
                  (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-condition w))))
-                                              while-holders))
+                                               while-holders))
                  ; Assert the constraints in all of the bodies of the active whens and whiles.  Also, solving clears the
                  ; global assertion store, so add that back in.  This includes the assertion that symbolic-time
                  ; equals next-time.  Then solve again.
@@ -174,7 +181,7 @@
                  ; not actually have changed but that's ok -- we just don't want to miss telling them if it did.)
                  ; TODO: this test ought to be that a while is active and will become inactive on any further advance-time
                  (cond [(and (null? active-whens) (null? active-whiles)) (void)]
-                       [else (send this notify-watchers)])
+                       [else (send this notify-watchers-changed)])
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))))
