@@ -11,44 +11,52 @@
 
 ; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
 ; or a subclass since they reference 'this'.
-; Note that 'when' overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
+;
+; 'when'.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 (define-syntax-rule (when test e ...)
   (send this add-when (when-holder (lambda () test) (lambda () e ...))))
-; #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time is an
-; 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
+; 'while'.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
+; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
 ; 'while' that will affect future state.  There are currently two simple cases for which the system can synthesize
 ; #:interesting-time, namely checking for button-pressed? and checking for milliseconds within a given range (with a
 ; rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
 (define-syntax while
   (syntax-rules (and <= >= button-pressed? milliseconds)
     ((while test #:interesting-time interesting e ...)
-     (send this add-while (while-holder (lambda () test) (lambda () interesting) (lambda () e ...))))
+     (send this add-while (while-holder (gensym) (lambda () test) (lambda () interesting) (lambda () e ...))))
     ((while (button-pressed?) e ...)
-     (send this add-while (while-holder (lambda () (send this button-pressed?))
-                                        (lambda () (send this button-going-up?))
+     (send this add-while (while-holder (gensym)
+                                        (lambda () (send this button-pressed?))
+                                        (lambda () (cond [(send this button-going-down?) 'first]
+                                                         [(send this button-going-up?) 'last]
+                                                         [else #f]))
                                         (lambda () e ...))))
-    ; for some reason this version doesn't work:
-    ; ((while (button-pressed?) e ...)
-    ;  (while (button-pressed?) #:interesting-time (lambda () (send this button-going-up?)) e ...))
-    ;
     ; The versions that check if milliseconds is within a given range assume a test like this:
     ;   (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100)) ...
     ; or this:
     ;   (while (and (<= 50 (milliseconds)) (>= 100 (milliseconds))) ...
-    ; The lower bound test is assumed to be syntactically correct - no error checking on it
-    ((while (and lower-test (<= (milliseconds) upper)) e ...)
-     (send this add-while (while-holder (lambda () (and lower-test (<= (send this milliseconds) upper)))
-                                        (lambda () (equal? (send this milliseconds) upper))
-                                        (lambda () e ...))))
-    ((while (and lower-test (>= upper (milliseconds))) e ...)
-     (send this add-while (while-holder (lambda () (and lower-test (>= upper (send this milliseconds))))
-                                        (lambda () (equal? (send this milliseconds) upper))
-                                        (lambda () e ...))))
+    ; plus the analogous versions for the lower bound test, so 4 possible combinations in all.  (Is there a better way to do this??)
+    ((while (and (<= lower (milliseconds)) (<= (milliseconds) upper)) e ...)
+     (add-while-with-time-bounds lower upper e ...))
+    ((while (and (<= lower (milliseconds)) (>= upper (milliseconds))) e ...)
+     (add-while-with-time-bounds lower upper e ...))
+    ((while (and (>= (milliseconds) lower) (<= (milliseconds) upper)) e ...)
+     (add-while-with-time-bounds lower upper e ...))
+    ((while (and (>= (milliseconds) lower) (>= upper (milliseconds))) e ...)
+     (add-while-with-time-bounds lower upper e ...))
     ((while test e ...)
      (error 'while "unable to automatically synthesize #:interesting-time function"))))
+; add-while-with-time-bounds is a helper macro (just for internal use)
+(define-syntax-rule (add-while-with-time-bounds lower upper e ...)
+  (send this add-while (while-holder (gensym)
+                                     (lambda () (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper)))
+                                     (lambda () (cond [(equal? lower (send this milliseconds)) 'first]
+                                                      [(equal? upper (send this milliseconds)) 'last]
+                                                      [else #f]))
+                                     (lambda () e ...))))
 ; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 (struct when-holder (condition body) #:transparent)
-(struct while-holder (condition interesting body) #:transparent)
+(struct while-holder (id condition interesting body) #:transparent)
 
 (define reactive-thing%
   (class abstract-reactive-thing%
