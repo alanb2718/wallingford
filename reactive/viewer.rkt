@@ -25,6 +25,8 @@
          (send-syncd my-thing advance-time-syncd)
          (refresh-helper)
          (channel-put ch null)]
+        [(list 'update-sampling)
+         (void)]  ; FIX THIS
         [(list 'thing-changed)   ; not sure if this needs to be synchd ....
          ; This is for push notification.  The thing should already have advanced time to the right time.
          (refresh-helper)]

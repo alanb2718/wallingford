@@ -102,23 +102,23 @@
     
     ; The variables push-sampling and pull-sampling say whether to do push or pull sampling respectively.
     ; push-sampling starts out as null, and then is set to #t or #f the first time the (get-sampling) function
-    ; is called.  pull-sampling starts out as an empty set.  Whenever we enter a 'while' that needs pull sampling,
-    ; we add the id for that 'while' to the pull-sampling set, and when we leave the 'while' we remove it.  In
-    ; addition, if there are 'always' constraints that imply we need to do pull sampling for the lifetime of
-    ; the entire program, we add an id to pull-sampling (and never remove it).  So if pull-sampling is a non-empty
-    ; set, we do pull sampling at that time.
+    ; is called.  It doesn't change after that.  pull-sampling starts out as an empty set.  Whenever we enter
+    ; a 'while' that needs pull sampling, we add the id for that 'while' to the pull-sampling set, and when we
+    ; leave the 'while' we remove it.  In addition, if there are 'always' constraints that imply we need to do
+    ; pull sampling for the lifetime of the entire program, we add an id to pull-sampling (and never remove it).
+    ; So if pull-sampling is a non-empty set, we do pull sampling at that time.
     (define push-sampling null)
     (define pull-sampling (mutable-set))
+    (define current-sampling #f)  ; for saving the sampling, so that we can notify viewers if it changes
     ; The get-sampling method should return one of '() '(push) '(pull) or '(push pull)
     (define/override (get-sampling)
       (cond [(null? push-sampling)  ; need to initialize things
              ; if there are when or while constraints, sampling should include push
-             (cond [(or (not (null? when-holders)) (not (null? while-holders))) (set! push-sampling #t)]
-                   [else (set! push-sampling #f)])
+             (set! push-sampling (or (not (null? when-holders)) (not (null? while-holders))))
              ; If any of the always constraints include a temporal reference, sampling should always include pull,
-             ; so add a token (for no good reason named 'always) to the hash that will always be there.
+             ; so add a token (for no good reason named 'always) to the set that will always be there.
              (cond [(pull-sampling? (send this get-always-code)) (set-add! pull-sampling 'always)])])
-      ; finally, return the kind of sampling to use
+      ; Once we get here, the variables are initialized.  Return the kind of sampling to use.
       (append (if push-sampling '(push) '()) (if (set-empty? pull-sampling) '() '(pull))))
     
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
@@ -161,7 +161,8 @@
       (let ([mytime (send this milliseconds-evaluated)])
         ; make sure we haven't gone by the target time already - if we have, don't do anything
         (cond [(< mytime target)
-               (let ([next-time (find-time mytime target)])
+               (let ([next-time (find-time mytime target)]
+                     [notify-changed #f])
                  (assert (equal? symbolic-time next-time))
                  (define saved-asserts (asserts))
                  ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
@@ -177,14 +178,47 @@
                  (for-each (lambda (w) ((while-holder-body w))) active-whiles)
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
-                 ; notify watchers if the sampling regime has changed
-                 ; TODO - FILL THIS IN
-                 ; If any whens or whiles were activated tell the viewers that this thing might have changed.  (It might
-                 ; not actually have changed but that's ok -- we just don't want to miss telling them if it did.)
-                 ; TODO: this test seems too strong - do we only care if a while just became active, but not if it was
-                 ; already active???
-                 (cond [(and (null? active-whens) (null? active-whiles)) (void)]
-                       [else (send this notify-watchers-changed)])
+                 ; Update the sampling regime if necessary, and if this object might have changed, notify viewers.
+                 ; Unfortunately this is kind of complicated ... here goes .....
+                 ; First check if interesting-time is true for any while constraints.  Do this before potentially
+                 ; updating the sampling regime and notifying any viewers, since this potentially affects both.
+                 ; If interesting-time is true for any while constraints:
+                 ; - If this is the first time the while constraint holds and if it includes temporal constraints in
+                 ;   the body, then viewers of this thing should use pull notification as long as the constraint is
+                 ;   active.  To set this up, add the token for the while to the set pull-sampling.
+                 ; - If this is the first the the while constraint holds but it doesn't include temporal constraints
+                 ;   in the body, we don't want to set up pull sampling for it.  Instead, set notify-changed to true
+                 ;   so that viewers will be notified to update this one time.  This is done with a flag rather than
+                 ;   just immediately notifying them to avoid multiple notifications.
+                 ; - If this is the last time that the while constraint holds, remove its token from the set pull-sampling
+                 ;   if present; and also set notify-changed to true, since we will in any case want to notify viewers
+                 ;   that this object may have changed.  (Even if the viewers were doing pull sampling, we want a special
+                 ;   sampling exactly at the end of the interval in which the while condition held.)
+                 ; - If this is some other interesting time, if pull sampling is on, don't do anything; if it's off, set
+                 ;   notify-changed to true.
+                 ; Another possibility would be to set notify-changed to true for *any* interesting time, even if pull
+                 ; sampling is on.  (The current choice does fewer push notifications but is more complex.)
+                 (for ([w active-whiles])
+                   (let ([why ((while-holder-interesting w))])  ; why it's interesting
+                     (cond [(eq? why 'first)
+                            (let ([id (while-holder-pull-id w)])
+                              (if id (set-add! pull-sampling id) (set! notify-changed #t)))]
+                           [(eq? why 'last)
+                            (set-remove! pull-sampling (while-holder-pull-id w))  ; still works if id is #f
+                            (set! notify-changed #t)]
+                           [(eq? why 'other)
+                            (if (member 'pull current-sampling) (void) (set! notify-changed #t))]
+                           [else (void)]))) ; otherwise not an interesting time           
+                 ; notify watchers if the sampling regime has changed (and remember it in current-sampling)
+                 (let ([new-sampling (send this get-sampling)])
+                   (cond [(not (equal? new-sampling current-sampling))
+                          (set! current-sampling new-sampling)
+                          (send this notify-watchers-update-sampling)]))
+                 ; If notify-changed is #t, or if any whens were activated, tell the viewers that this thing might
+                 ; have changed.  (It might not actually have changed but that's ok -- we just don't want to miss
+                 ; telling them if it did.)
+                 (cond [(or notify-changed (not (null? active-whens)))
+                        (send this notify-watchers-changed)])
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))))
