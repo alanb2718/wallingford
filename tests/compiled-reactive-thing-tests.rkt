@@ -24,6 +24,7 @@
          target)))
    (define r (new no-constraints-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
+   (check equal? (send-syncd r get-sampling-syncd) '())
    (send-thing r advance-time 30)
    (check-equal? (send-syncd r milliseconds-syncd) 30)
    (send-thing r advance-time 2000)

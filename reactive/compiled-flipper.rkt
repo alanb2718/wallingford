@@ -25,7 +25,8 @@
       ; So if the button is pressed update the image with the flipped color
       (cond [(button-going-down?)
              (send this set-image!
-                   (struct-copy circle (image) [color (flip (circle-color (image)))]))]))
+                   (struct-copy circle (image) [color (flip (circle-color (image)))]))
+             (send this notify-watchers-changed)]))
     (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       (let ([potential-targets (filter (lambda (e) (and (> (mouse-event-time e) mytime)

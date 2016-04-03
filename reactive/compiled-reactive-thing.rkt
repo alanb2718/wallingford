@@ -4,8 +4,9 @@
 ;   (get-sampling)
 ;   (update-mysolution)
 ;   (find-time mytime target)
-; These methods are all called by the thing's thread, so do not need to (and should not)
-; use send-thing or send-syncd
+; In addition, (update-mysolution) should send the message notify-watchers-changed after the solution changed,
+; if it did (except if we are doing pull sampling and this isn't the last time the condition is true).  These
+; methods are all called by the thing's thread, so do not need to (and should not) use send-thing or send-syncd
 
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
@@ -29,6 +30,8 @@
     (define/public (update-mysolution)
       (error "should override in subclasses\n"))
 
+    (define current-sampling #f)
+
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' condition true.  If there aren't any values between the current time and the target that makes
     ; a 'when' condition true, then return the target.
@@ -43,8 +46,11 @@
       (cond [(< my-time target)
              (let ([next-time (send this find-time my-time target)])
                (send this set-my-time next-time)
+               ; notify watchers if the sampling has changed
+               (let ([new-sampling (send this get-sampling)])
+                 (cond [(not (equal? current-sampling new-sampling))
+                        (set! current-sampling new-sampling)
+                        (send this notify-watchers-update-sampling)]))
                (send this update-mysolution)
-               ; If any whens were activated tell the viewers that this thing changed.  (It might not actually
-               ; have changed but that's ok -- we just don't want to miss telling them if it did.)
-               (for/set ([w (send this get-watchers)]) (send-thing w thing-changed))
+               ; update-mysolution should send the message notify-watchers-changed if the solution changed
                (if (< next-time target) (advance-time-helper target) (void)))]))))

@@ -4,11 +4,10 @@
 
 (define dragging%
   (class reactive-thing%
-    (inherit button-going-down? button-going-up? button-pressed? mouse-position image seconds)
+    (inherit button-pressed? image mouse-position)
     (super-new)
     (send this set-image! (make-circle this))
     (while (button-pressed?)
-           #:interesting-time (button-going-up?)
            (assert (equal? (circle-center (image)) (mouse-position))))
     (send this solve)))
 

@@ -26,7 +26,9 @@
          (refresh-helper)
          (channel-put ch null)]
         [(list 'update-sampling)
-         (void)]  ; FIX THIS
+         (if (member 'pull (send my-thing get-sampling))
+             (start-pull)
+             (stop-pull))]
         [(list 'thing-changed)   ; not sure if this needs to be synchd ....
          ; This is for push notification.  The thing should already have advanced time to the right time.
          (refresh-helper)]
@@ -63,7 +65,6 @@
              [whole-part (quotient i 10)]
              [decimal-part (remainder i 10)])
         (string-append "Time: " (number->string whole-part) "." (number->string decimal-part))))
-    
     (define running #f)
     (define/public (watch)
       (set! running #t)
@@ -74,18 +75,28 @@
       ; if my-thing wants pull sampling, set up a thread to poll every my-sleep-time seconds
       ; until the 'stop' button is pushed
       (cond [(member 'pull (send my-thing get-sampling))
-             (thread (lambda ()
-                       (let loop ()
-                         (send-syncd this update-view-syncd)
-                         ; later: take account of compute time
-                         (sleep my-sleep-time)
-                         (if running (loop) (void)))))]))
+             (start-pull)]))
     (define/public (unwatch)
       (set! running #f)
       (send my-thing unwatched-by this)
       ; trying to send this syncd deadlocks ???
       ; (send-syncd my-thing unwatched-by-syncd this)
-      (send-syncd this refresh-syncd))))
+      (send-syncd this refresh-syncd))
+    (define pull-thread null)
+    (define (start-pull) ; start a pull thread, if it's not already running
+      (cond [(or (null? pull-thread) (thread-dead? pull-thread))
+             (set! pull-thread  (thread (lambda ()
+                                          (let loop ()
+                                            (send-syncd this update-view-syncd)
+                                            ; later: take account of compute time
+                                            (sleep my-sleep-time)
+                                            (if running (loop) (void))))))]))
+    (define (stop-pull)  ; stop the pull thread if it's currently running
+      ; If there is always a start-pull before a stop-pull, we don't actually need to test if pull-thread is null ...
+      ; but this seems more robust.
+      (if (null? pull-thread) #f (kill-thread pull-thread)))))
+
+
 
 ; Derive a new canvas (a drawing window) class to handle events
 (define my-canvas%

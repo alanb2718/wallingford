@@ -47,7 +47,7 @@
      (error 'while "unable to automatically synthesize #:interesting-time function"))))
 ; add-while and add-while-with-time-bounds are helper macros (just for internal use)
 (define-syntax-rule (add-while condition interesting e ...)
-  (send this add-while-holder (while-holder (if (pull-sampling? '(e ...)) (gensym) #f)
+  (send this add-while-holder (while-holder (if (pull-sampling? 'condition) (gensym) #f)
                                             (lambda () condition)
                                             (lambda () interesting)
                                             (lambda () e ...))))
@@ -86,7 +86,6 @@
     (define/public (previous expr)
       (send this wally-evaluate expr))
     
-    ; handling 'when' and 'while'
     (define/public (add-when-holder holder)
       (set! when-holders (cons holder when-holders)))
     (define/public (add-while-holder holder)
@@ -182,11 +181,13 @@
                  ; Unfortunately this is kind of complicated ... here goes .....
                  ; First check if interesting-time is true for any while constraints.  Do this before potentially
                  ; updating the sampling regime and notifying any viewers, since this potentially affects both.
+                 ; We check all of the while constraints, not just the active ones, since in some cases interesting-time
+                 ; is true just before the while becomes active.
                  ; If interesting-time is true for any while constraints:
                  ; - If this is the first time the while constraint holds and if it includes temporal constraints in
                  ;   the body, then viewers of this thing should use pull notification as long as the constraint is
                  ;   active.  To set this up, add the token for the while to the set pull-sampling.
-                 ; - If this is the first the the while constraint holds but it doesn't include temporal constraints
+                 ; - If this is the first time the while constraint holds but it doesn't include temporal constraints
                  ;   in the body, we don't want to set up pull sampling for it.  Instead, set notify-changed to true
                  ;   so that viewers will be notified to update this one time.  This is done with a flag rather than
                  ;   just immediately notifying them to avoid multiple notifications.
@@ -198,8 +199,8 @@
                  ;   notify-changed to true.
                  ; Another possibility would be to set notify-changed to true for *any* interesting time, even if pull
                  ; sampling is on.  (The current choice does fewer push notifications but is more complex.)
-                 (for ([w active-whiles])
-                   (let ([why ((while-holder-interesting w))])  ; why it's interesting
+                 (for ([w while-holders])
+                   (let ([why (send this wally-evaluate ((while-holder-interesting w)))])  ; why it's interesting
                      (cond [(eq? why 'first)
                             (let ([id (while-holder-pull-id w)])
                               (if id (set-add! pull-sampling id) (set! notify-changed #t)))]

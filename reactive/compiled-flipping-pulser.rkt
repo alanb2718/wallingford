@@ -25,8 +25,9 @@
       ;                  (flip (previous (circle-color (image)))))))))
       (let ([newcolor (if (button-going-down?) (flip (circle-color (image))) (circle-color (image)))])
         (send this set-image! (struct-copy circle (image)
-                                               [radius  (+ 60 (* 50 (sin (seconds))))]
-                                               [color newcolor]))))
+                                           [radius  (+ 60 (* 50 (sin (seconds))))]
+                                           [color newcolor]))))
+      ; no need to send notify-watchers-changed since we are always in push pull sampling mode
     (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       (let ([potential-targets (filter (lambda (e) (and (> (mouse-event-time e) mytime)

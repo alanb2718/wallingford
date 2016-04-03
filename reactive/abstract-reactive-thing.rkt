@@ -85,6 +85,8 @@
          (set-remove! watchers v)
          ; if this was the last watcher terminate any alert
          (terminate-old-alert)]
+        [(list 'get-sampling-syncd ch)
+         (channel-put ch (send this get-sampling))]
         [(list 'mouse-event event-time event-x event-y state)
          ; Got a event from the viewer.  Add it to the list of mouse-events using the mouse-event struct.
          ; Formerly: to avoid cycles, we assumed the event occurred at least 1 millisecond after the thing's
@@ -109,7 +111,7 @@
     
     ; get-sampling says how to sample.  It should be one of '(push) '(pull) '(push pull) or '()
     (define/public (get-sampling)
-      (error "subclass responsibility\n"))
+      (error "get-sampling -- subclass responsibility\n"))
     
     ; *** button events ***
     ; button-going-down? can test whether the button is going down at the current time, or find a time
@@ -180,7 +182,7 @@
     ; (milliseconds should be overridden in subclasses to return the thing's current idea of its own time.
     ; It can be symbolic.
     (define/public (milliseconds)
-      (error "subclass responsibility\n"))
+      (error "milliseconds -- subclass responsibility\n"))
     ; If milliseconds is symbolic, this should evaluate it.  Otherwise it just returns milliseconds.
     (define/public (milliseconds-evaluated)
       (send this milliseconds))
@@ -223,7 +225,7 @@
     ; a 'when' condition true, then return the target.  Note that the calls to solve in this function use a
     ; separate assertion stack, leaving alone the global stack and solution.
     (define/public (find-time mytime target)
-      (error "subclass responsibility\n"))
+      (error "find-time -- subclass responsibility\n"))
 
     (define/public (advance-time-and-prune-events target)
       (send this advance-time-helper target)
@@ -242,8 +244,12 @@
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
+    ; In addition, this method should notify viewers if the sampling regime should be changed, and also
+    ; if this thing has potentially changed (so that the viewer should refresh the image).  This is done
+    ; using the notify-watchers-update-sampling and notify-watchers-changed messages respectively (both
+    ; defined in this class).
     (define/public (advance-time-helper target)
-      (error "subclass responsibility\n"))
+      (error "advance-time-helper -- subclass responsibility\n"))
     
     ; ** alerts **
     (define (set-alert-helper)

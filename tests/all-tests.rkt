@@ -10,6 +10,7 @@
  "electrical-things-tests.rkt"
  "electrical-things-dynamic-tests.rkt"
  "reactive-thing-tests.rkt"
+ "sampling-tests.rkt"
  "mouse-tests.rkt"
  "when-tests.rkt"
  "while-tests.rkt"

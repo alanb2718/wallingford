@@ -35,7 +35,8 @@
       (cond [(and (button-going-down?) (pair? potential-targets))
              (set! actual-target (car potential-targets))
              (set! actual-offset (point-minus (mouse-position) (circle-center actual-target)))
-             (put-first actual-target my-image)]))
+             (put-first actual-target my-image)
+             (send this notify-watchers-changed)]))
     (define/override (find-time mytime target)
       ; if there is a button press between the current time and target, advance to that, and otherwise to target
       (let ([potential-targets (filter (lambda (e) (and (> (mouse-event-time e) mytime)
