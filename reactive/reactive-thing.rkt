@@ -65,7 +65,7 @@
 (define (pull-sampling? code)
   (includes-one-of code '((seconds) (milliseconds) (button-pressed?))))
 (define (includes-one-of code items)
-  ; items should be a list of temporal function calls. Return true if code contains one of the calls.
+  ; items should be a list of temporal function calls. Return true if code is or contains one of the calls.
   (cond [(member code items) #t]
         [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
         [else #f]))
@@ -178,38 +178,28 @@
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
                  ; Update the sampling regime if necessary, and if this object might have changed, notify viewers.
-                 ; Unfortunately this is kind of complicated ... here goes .....
                  ; First check if interesting-time is true for any while constraints.  Do this before potentially
                  ; updating the sampling regime and notifying any viewers, since this potentially affects both.
                  ; We check all of the while constraints, not just the active ones, since in some cases interesting-time
-                 ; is true just before the while becomes active.
-                 ; If interesting-time is true for any while constraints:
-                 ; - If this is the first time the while constraint holds and if it includes temporal constraints in
+                 ; is true just before the while becomes active.  If interesting-time is true for any while constraints:
+                 ; - Set notify-changed to true.  (Even if we are using pull sampling, we want to do an extra push notification
+                 ;   so that the viewer updates immediately.  This is important for the end of the interval in which a 'while'
+                 ;   holds, since often that will be the last state the object is in.  Also, for good responsiveness we want to
+                 ;   do it at the beginning of the interval in which the 'while' holds.  And if it's just some other interesting
+                 ;   time, well, maybe it's interesting for some reason ... so update then as well (this last is less clear-cut).
+                 ; - If this is the first time the while constraint holds, and if it includes temporal constraints in
                  ;   the body, then viewers of this thing should use pull notification as long as the constraint is
                  ;   active.  To set this up, add the token for the while to the set pull-sampling.
-                 ; - If this is the first time the while constraint holds but it doesn't include temporal constraints
-                 ;   in the body, we don't want to set up pull sampling for it.  Instead, set notify-changed to true
-                 ;   so that viewers will be notified to update this one time.  This is done with a flag rather than
-                 ;   just immediately notifying them to avoid multiple notifications.
                  ; - If this is the last time that the while constraint holds, remove its token from the set pull-sampling
-                 ;   if present; and also set notify-changed to true, since we will in any case want to notify viewers
-                 ;   that this object may have changed.  (Even if the viewers were doing pull sampling, we want a special
-                 ;   sampling exactly at the end of the interval in which the while condition held.)
-                 ; - If this is some other interesting time, if pull sampling is on, don't do anything; if it's off, set
-                 ;   notify-changed to true.
-                 ; Another possibility would be to set notify-changed to true for *any* interesting time, even if pull
-                 ; sampling is on.  (The current choice does fewer push notifications but is more complex.)
+                 ;   if present.
                  (for ([w while-holders])
-                   (let ([why (send this wally-evaluate ((while-holder-interesting w)))])  ; why it's interesting
-                     (cond [(eq? why 'first)
-                            (let ([id (while-holder-pull-id w)])
-                              (if id (set-add! pull-sampling id) (set! notify-changed #t)))]
-                           [(eq? why 'last)
-                            (set-remove! pull-sampling (while-holder-pull-id w))  ; still works if id is #f
-                            (set! notify-changed #t)]
-                           [(eq? why 'other)
-                            (if (member 'pull current-sampling) (void) (set! notify-changed #t))]
-                           [else (void)]))) ; otherwise not an interesting time           
+                   (let ([why (send this wally-evaluate ((while-holder-interesting w)))]
+                         [id (while-holder-pull-id w)])
+                     ; 'why' is why this time is interesting, or #f if it's not
+                     ; 'id' is the unique ID for this while if it should use pull sampling, or #f if not
+                     (cond [why (set! notify-changed #t)])
+                     (cond [(and (eq? why 'first) id) (set-add! pull-sampling id)]
+                           [(and (eq? why 'last) id) (set-remove! pull-sampling id)])))
                  ; notify watchers if the sampling regime has changed (and remember it in current-sampling)
                  (let ([new-sampling (send this get-sampling)])
                    (cond [(not (equal? new-sampling current-sampling))
