@@ -94,33 +94,62 @@
    (check equal? (get-state r1) 'up)
    (check equal? (get-button-pressed? r1) #f)))
 
-(define (mouse-position)
+(define (mouse-position-no-presses)
   (test-case
-   "test mouse position function and event pruning (just with reactive thing programatically, not with a viewer)"
+   "test mouse position function and event pruning (just with reactive thing programatically, not with a viewer) - no button presses in this test"
    (define r1 (new reactive-thing%))
    (define (get-mp r)
      (send-syncd r evaluate-syncd (lambda () (send r mouse-position))))
    (send-thing r1 mouse-event  0 10 20 'up)
+   (check equal? (get-mp r1) (point 10 20))
    (send-thing r1 mouse-event 10 10 30 'up)
    (send-thing r1 mouse-event 30 50 26 'up)
    (send-thing r1 mouse-event 60 80 55 'up)
-   (check equal? (get-mp r1) (point 10 20))
-   (check equal? (length (send r1 get-mouse-events)) 4)
+   (check equal? (length (send r1 get-mouse-events)) 1)
    (send-thing r1 advance-time 10)
-   (check equal? (get-mp r1) (point 10 30))
-   (check equal? (length (send r1 get-mouse-events)) 4) ; should still have event for time=0
+   (check equal? (get-mp r1) (point 80 55))  ; should get last event even though time is 10
+   (check equal? (length (send r1 get-mouse-events)) 1)
    (send-thing r1 advance-time 20)
-   (check equal? (get-mp r1) (point 30 28))
-   (check equal? (length (send r1 get-mouse-events)) 3)
-   (send-thing r1 advance-time 25)
-   (check equal? (get-mp r1) (point 40 27))
-   (check equal? (length (send r1 get-mouse-events)) 3)
-   (send-thing r1 advance-time 60)
    (check equal? (get-mp r1) (point 80 55))
-   (check equal? (length (send r1 get-mouse-events)) 2)
+   (check equal? (length (send r1 get-mouse-events)) 1)
    (send-thing r1 advance-time 200)
    (check equal? (get-mp r1) (point 80 55))
    (check equal? (length (send r1 get-mouse-events)) 1)
+   ))
+
+(define (mouse-position-with-presses)
+  (test-case
+   "test mouse position function and event pruning in combination with button presses"
+   (define r1 (new reactive-thing%))
+   (define (get-mp r)
+     (send-syncd r evaluate-syncd (lambda () (send r mouse-position))))
+   (define (get-events r)
+     (send-syncd r evaluate-syncd (lambda () (send r get-mouse-events))))
+   (send-thing r1 mouse-event   0 0   0 'up)
+   (send-thing r1 mouse-event 100 0  20 'going-down)
+   (send-thing r1 mouse-event 110 0  40 'down)
+   (send-thing r1 mouse-event 120 0  60 'down)
+   (send-thing r1 mouse-event 150 0  80 'down)
+   (send-thing r1 mouse-event 200 0 100 'going-up)
+   (send-thing r1 mouse-event 210 0 120 'up)
+   (check equal? (length (get-events r1)) 3)
+   (check equal? (get-mp r1) (point 0 20))  ; first event on the list is for t=100
+   (send-thing r1 advance-time 10)
+   (check equal? (length (get-events r1)) 3)
+   (check equal? (get-mp r1) (point 0 20))  ; first event on the list is still for t=100
+   (send-thing r1 advance-time 125)
+   (check equal? (length (get-events r1)) 2)
+   (check equal? (get-mp r1) (point 0 40))  ; 1/4 of the way between the 'going-down and 'going-up events
+   (send-thing r1 advance-time 150)
+   (check equal? (length (get-events r1)) 2)
+   (check equal? (get-mp r1) (point 0 60))
+   (send-thing r1 advance-time 200)
+   (check equal? (length (get-events r1)) 2)
+   (check equal? (get-mp r1) (point 0 100))
+   (check equal? (length (get-events r1)) 2)
+   (send-thing r1 advance-time 300)
+  (check equal? (length (get-events r1)) 2)
+   (check equal? (get-mp r1) (point 0 120))
    ))
 
 (define mouse-tests 
@@ -128,7 +157,8 @@
    "run tests for mouse and button handling"
    (button-events)
    (button-state)
-   (mouse-position)
+   (mouse-position-no-presses)
+   (mouse-position-with-presses)
    ))
 
 (time (run-tests mouse-tests))
