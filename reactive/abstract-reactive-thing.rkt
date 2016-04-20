@@ -272,12 +272,13 @@
       ; (needed for interpolating mouse position)
      (set! mouse-events (pruned-event-list mouse-events (send this milliseconds-evaluated))))
 
-    ; helper function to return a new event list that includes only events that occurred at or after time t
-    ; (leaving one older event if the list would be otherwise empty)
+    ; helper function to return a new event list that includes only events that occurred at or after time t,
+    ; leaving one older event if the list would be otherwise empty (so that we can use its state), or if the
+    ; next-to-last event occurred after t (so that we can interpolate between the last and next-to-last events)
     (define (pruned-event-list events t)
       (cond [(null? events) null]
-            [(> t (mouse-event-time (car events))) (list (car events))]
-            [else (cons (car events) (pruned-event-list (cdr events) t))]))
+            [(< t (mouse-event-time (car events))) (pruned-event-list (cdr events) t)]
+            [else (list (car events))]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
