@@ -275,15 +275,9 @@
     ; helper function to return a new event list that includes only events that occurred at or after time t
     ; (leaving one older event if the list would be otherwise empty)
     (define (pruned-event-list events t)
-      (if (null? events)
-          null
-          (let ([p (prune1 events t)])
-            (if (null? p) (list (car events)) p))))
-    ; helper for the helper .... discard all events prior to t
-    (define (prune1 events t)
       (cond [(null? events) null]
-            [(< (mouse-event-time (car events)) t) null]
-            [else (cons (car events) (prune1 (cdr events) t))]))
+            [(> t (mouse-event-time (car events))) (list (car events))]
+            [else (cons (car events) (pruned-event-list (cdr events) t))]))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
