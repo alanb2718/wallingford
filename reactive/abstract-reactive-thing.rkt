@@ -245,10 +245,13 @@
              (cons (car events) (prune-event-list (cdr events) t))]
             [else (list (car events))]))  ; first event occurred at or before t
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
-    ; Solve all constraints in active when constraints.
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or is an
+    ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.  If this makes
+    ; additional 'when' or 'while' constraints active, include those also, and keep iterating until a fixpoint is
+    ; reached and no more constraints become active.  It is an error if this would result in an already-active
+    ; constraint subsequently becoming inactive - raise an exception if that occurs.
     ; If we advance time to something less than 'target', call advance-time-helper again.
-    ; In addition, this method should notify viewers if the sampling regime should be changed, and also
+    ; Finally, this method should notify viewers if the sampling regime should be changed, and also
     ; if this thing has potentially changed (so that the viewer should refresh the image).  This is done
     ; using the notify-watchers-update-sampling and notify-watchers-changed messages respectively (both
     ; defined in this class).
