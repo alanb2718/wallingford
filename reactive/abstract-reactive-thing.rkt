@@ -88,26 +88,19 @@
         [(list 'get-sampling-syncd ch)
          (channel-put ch (send this get-sampling))]
         [(list 'mouse-event event-time event-x event-y state)
-         ; Got a event from the viewer.  Add it to the list of mouse-events using the mouse-event struct.
-         ; To avoid growing the list of events excessively, only save new 'up or 'down events at the head
-         ; of the list -- all other elements in the mouse-events list should be 'going-up or 'going-down events.
-         ; We always save 'going-up and 'going-down events, until they are pruned because this thing's time has
-         ; advanced beyond the event time.
-         ; TODO: this is probably too complicated, and is an artifact of the previous code that saved all events.
-         ; Just have a list of 'going-up and 'going-down events, and separately a latest position event?
+         ; Got a event from the viewer.  Add it to the list of mouse-events using the mouse-event struct.  To avoid
+         ; growing the list of events excessively, if the first event in the list is an 'up or 'down event and the
+         ; new event is also an 'up or 'down event respectively, replace the first element with the new event.
+         ; Otherwise just cons the new event onto the list.  As a result we always save 'going-up and 'going-down
+         ; events, until they are pruned because this thing's time has advanced beyond the event time.
          ; Formerly: to avoid cycles, we assumed the event occurred at least 1 millisecond after the thing's
          ; current internal time.  Doesn't seem necessary any more???
          (let* ([t (if (null? event-time) (current-clock-time) event-time)]
                 [e (mouse-event t (point event-x event-y) state)])  ; e is the new event
-           (if (null? mouse-events)
-               (set! mouse-events (list e))
-               (let* ([changing (or (eq? state 'going-up) (eq? state 'going-down))]
-                      [head-state (mouse-event-button-state (car mouse-events))]
-                      [head-changing (or (eq? head-state 'going-up) (eq? head-state 'going-down))])
-                 [if (or (and (not changing) (eq? state head-state))
-                         (and changing (not head-changing)))
-                     (set! mouse-events (cons e (cdr mouse-events)))
-                     (set! mouse-events (cons e mouse-events))])))
+           (cond [(null? mouse-events) (set! mouse-events (list e))]
+                 [(and (or (eq? state 'up) (eq? state 'down)) (eq? state (mouse-event-button-state (car mouse-events))))
+                  (set! mouse-events (cons e (cdr mouse-events)))]
+                 [else (set! mouse-events (cons e mouse-events))]))
          ; revise when to wake up next if need be (could be wake up right now)
          ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
          (cond [(not (set-empty? watchers)) (set-alert-helper)])]
@@ -139,36 +132,29 @@
         (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? 'going-up (mouse-event-button-state e))))
                            mouse-events)))))
     
-    ; Return the mouse position for the current time (call it t).  Note that time is evaluated for this function - we don't
-    ; try to find a time that corresponds to a position.  The logic is a bit complicated, since we don't necessarily have
-    ; a sample of the mouse position at t.  (Can the code be simplified?  An earlier version of the code - tagged as v1.0 - saved
-    ; all mouse events, including move events, and interpolated if need be.  It had the defect that the list of events got
-    ; very long.  This new version avoids that, at the cost of logical complexity.)
-    ;
-    ; - If t is greater than or equal to the time of the first event on mouse-events, or if there is only one event, use the
-    ;   position for the first event.  (If t is greater than the time of the first event, then that event is the most recent
-    ;   observation.  Would there ever be a reason to wait for another event?  I don't think so but this should be checked.)
-    ;
-    ; - If not, t must be less than the time of the first event and there must be several events in mouse-events.  If t is
-    ;   greater than the time of the second event, and the first event has state 'up or 'down, there isn't a 'going-up or
-    ;   'going-down event at t, and so for now assume that t isn't an interesting time as far as the mouse is concerned.
-    ;   (Later it might be interesting if we can have 'when' conditions involving e.g. the mouse position being equal to
-    ;   some value.)  So in that case just use the more recent position, which is in the first mouse-event record.
-    ;
-    ; - Otherwise, t is equal to the time of a 'going-up or 'going-down event or is in between two such times.  We don't record
-    ;   mouse movement times between 'going-up and 'going-down events, so use the position at the event at t, or else interpolate
-    ;   if there isn't an event recorded at t.
+    ; Return the mouse position for the current time (call it t):
+    ;   - if there are no events, return a default position (point 0 0)
+    ;   - if there is an event exactly at t, return the position for it
+    ;   - otherwise, if there are events after t, return the position for the soonest event after t
+    ;   - otherwise, return the position for the most recent event before t
+    ; The rationale for this is that we record all 'going-up and 'going-down events, so if we don't have an event
+    ; for t, we assume for now that t isn't an interesting time as far as the mouse is concerned.  (Later it might
+    ; be interesting if we can have 'when' conditions involving e.g. the mouse position being equal to some value.)
+    ; If t isn't an interesting time, we favor beging a little ahead of the actual state at t.
+    ; An earlier version of the code - tagged as v1.0 - saved all mouse events, including all move events, and
+    ; interpolated if need be.  It had the defect that the list of events got very long.  This new version avoids that,
+    ; but doesn't do interpolations and doesn't save so many events.
     (define/public (mouse-position)
       (if (null? mouse-events)
           (point 0 0)   ; formerly gave an erropr
-          (let ([t (send this milliseconds-evaluated)]
-                [e1 (car mouse-events)])
-            (cond [(or (>= t (mouse-event-time e1)) (null? (cdr mouse-events)))
-                   (mouse-event-pt e1)]
-                  [(and (> t (mouse-event-time (cadr mouse-events)))
-                        (or (eq? 'up (mouse-event-button-state e1)) (eq? 'down (mouse-event-button-state e1))))
-                   (mouse-event-pt e1)]
-                  [else (interpolate-mouse-position t mouse-events)]))))
+          (mouse-position-helper (send this milliseconds-evaluated) mouse-events)))
+    (define (mouse-position-helper t events)
+      (cond [(null? (cdr events))
+             (mouse-event-pt (car events))]
+            [(and (<= t (mouse-event-time (car mouse-events))) (> t (mouse-event-time (cadr mouse-events))))
+             (mouse-event-pt (car events))]
+            [else (mouse-position-helper t (cdr events))]))
+    
     ; return the state of the button at the current time (time is evaluated for this function also)
     ; if we don't have an event for the exact time, use the closest previous time
     (define/public (button-state)
@@ -177,27 +163,6 @@
     (define/public (button-pressed?)
       (let ([s (send this button-state)])
         (or (eq? s 'down) (eq? s 'going-up))))
-
-    ; Helper function for mouse-position.  The events in the list are with most recent event first -- find
-    ; mouse position at the exact time, or else interpolate the mouse position between the two closest events
-    (define (interpolate-mouse-position time events)
-      (cond [(null? (cdr events)) (mouse-event-pt (car events))] ; just one event in the list
-            [(equal? time (mouse-event-time (car events))) (mouse-event-pt (car events))]  ; exact time found
-            [(> time (mouse-event-time (cadr events))) ; interpolate between the first two events on the list
-             (let* ([e1 (car events)]
-                    [e2 (cadr events)]
-                    [x1 (point-x (mouse-event-pt e1))]
-                    [y1 (point-y (mouse-event-pt e1))]
-                    [x2 (point-x (mouse-event-pt e2))]
-                    [y2 (point-y (mouse-event-pt e2))]
-                    [t1 (mouse-event-time e1)]
-                    [t2 (mouse-event-time e2)]
-                    [ratio (/ (exact->inexact (- t1 time)) (exact->inexact (- t1 t2)))]
-                    [x (- x1 (* ratio (- x1 x2)))]
-                    [y (- y1 (* ratio (- y1 y2)))])
-               (point (round x) (round y)))]
-            [else (interpolate-mouse-position time (cdr events))]))
-    
     (define (button-state-helper events time)
       (if (null? events) 'up  ; assume button starts up
           (let* ([e1 (car events)]
@@ -270,15 +235,15 @@
       (send this advance-time-helper target)
       ; prune all events that occurred before the current time - except leave one older event in the list
       ; (needed for interpolating mouse position)
-     (set! mouse-events (pruned-event-list mouse-events (send this milliseconds-evaluated))))
+     (set! mouse-events (prune-event-list mouse-events (send this milliseconds-evaluated))))
 
     ; helper function to return a new event list that includes only events that occurred at or after time t,
-    ; leaving one older event if the list would be otherwise empty (so that we can use its state), or if the
-    ; next-to-last event occurred after t (so that we can interpolate between the last and next-to-last events)
-    (define (pruned-event-list events t)
+    ; leaving one older event if the list would be otherwise empty (so that we can use its state)
+    (define (prune-event-list events t)
       (cond [(null? events) null]
-            [(< t (mouse-event-time (car events))) (pruned-event-list (cdr events) t)]
-            [else (list (car events))]))
+            [(< t (mouse-event-time (car events))) ; first event occurred after t
+             (cons (car events) (prune-event-list (cdr events) t))]
+            [else (list (car events))]))  ; first event occurred at or before t
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
     ; Solve all constraints in active when constraints.
