@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for 'while' in reactive-thing%
+;; unit tests for compiled versions of 'while', based on while-tests.rkt
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
@@ -9,7 +9,7 @@
 
 (provide compiled-while-tests)
 
-(define (one-while-interesting)
+(define (one-while)
   (test-case
    "test advance time with one while and the start and end of the while identified as interesting times"
    (define tester%
@@ -51,7 +51,7 @@
    (check equal? (send-syncd r get-sampling-syncd) '(push))
    (check equal? (send r get-x) 100)))
 
-(define (one-while-interesting-hop-over)
+(define (one-while-hop-over)
   (test-case
    "same as one-while-interesting, but hop over the whole interval"
    (define tester%
@@ -81,6 +81,11 @@
    (check equal? (send-syncd r milliseconds-syncd) 150)
    (check equal? (send-syncd r get-sampling-syncd) '(push))
    (check equal? (send r get-x) 100)))
+
+;; compiled versions of these tests omitted, since the compiler would in effect be in charge
+;; of synthesizing the interesting-time function
+;;   one-while-hop-over-synthesize-interesting-time
+;;   one-while-hop-over-synthesize-interesting-time-variant
 
 (define (one-while-track-times)
   (test-case
@@ -125,9 +130,9 @@
 
 (define compiled-while-tests 
   (test-suite+
-   "run tests for while in reactive-thing"
-   (one-while-interesting)
-   (one-while-interesting-hop-over)
+   "run tests for compiled versions of while"
+   (one-while)
+   (one-while-hop-over)
    (one-while-track-times)
    ))
 
