@@ -1,7 +1,7 @@
 #lang s-exp rosette
 
-; Note: also see reactive/quadrilateral.rkt for a version that uses 'when' and 'while' constraints
-; for selection and dragging.
+; Version of the quadrilateral demo with event handling written by hand.
+; See reactive/quadrilateral.rkt for a version that uses 'when' and 'while' constraints for selection and dragging.
 
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
