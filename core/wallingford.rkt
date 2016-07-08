@@ -75,7 +75,7 @@
     ; soft always and stay constraints should be satisfied if possible, respecting their
     ; relative priorities.  Stay constraints are considered relative to the old-soln
     ; object at the start of solving.  After finding a solution, clear the global assertion store.
-    ; When we return from calling wally-solve, the solution object that is returned holds a solution.
+    ; When we return from calling solve, the solution object that is returned holds a solution.
     ; This thing's current-solution is also updated with the new solution found by this method.
     (define/public (solve)
       (define old-soft-stay-vals (map (lambda (s) (evaluate s current-solution)) (map soft-target soft-stays)))

@@ -115,17 +115,18 @@
     
     ; *** button events ***
     ; button-going-down? can test whether the button is going down at the current time, or find a time
-    ; the button is going down
+    ; the button is going down -- similarly for button-going-up?
     (define/public (button-going-down?)
-      (let ([t (send this milliseconds)])
-        (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? 'going-down (mouse-event-button-state e))))
-                           mouse-events)))))
+      (button-going-up-or-down? 'going-down))
     (define/public (button-going-up?)
+      (button-going-up-or-down? 'going-up))
+    (define (button-going-up-or-down? direction)
       (let ([t (send this milliseconds)])
-        (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? 'going-up (mouse-event-button-state e))))
-                           mouse-events)))))
-    ; If we don't have a record of mouse-position at the current time, interpolate between the two nearest times
-    ; note that time is evaluated for this function - we don't try to find a time that corresponds to a position
+        ; findf will return the event if found, but we want this function to return just #t or #f
+        (not (eq? #f (findf (lambda (e) (and (equal? t (mouse-event-time e)) (eq? direction (mouse-event-button-state e))))
+                            mouse-events)))))
+    ; If we don't have a record of mouse-position at the current time, interpolate between the two nearest times.
+    ; Note that time is evaluated for this function - we don't try to find a time that corresponds to a position.
     (define/public (mouse-position)
       (interpolate-mouse-position (send this milliseconds-evaluated) mouse-events))
     ; return the state of the button at the current time (time is evaluated for this function also)
@@ -234,7 +235,7 @@
      (set! mouse-events (pruned-event-list mouse-events (send this milliseconds-evaluated))))
 
     ; helper function to return a new event list that includes only events that occurred after time t
-    ; (leaving one older event)
+    ; (leaving one older event, which might be needed for interpolation)
     (define (pruned-event-list events t)
       (cond [(null? events) events]
             [(null? (cdr events)) events]
@@ -257,9 +258,9 @@
       ; current knowledge.  If there is a button press or other external event in the meantime, set-alert
       ; will be called again and the event accounted for.  If no interesting times found, wake up in a week.
       ; In practice this means that the user will probably have exited the program in the meantime, but it
-      ; would still be ok to wake up then.  If we go to real-valued time, and include +infinity as a real,
-      ; we could use that as the first value, and then avoid setting up a thread at all.  (This seems a bit
-      ; cleaner and also like it would make zero difference in practice.)
+      ; would still be ok to wake up then.  (If +infinity is allowed as a real, we could use that as the first
+      ; value, and then avoid setting up a thread at all.  (This seems a bit cleaner and also like it would
+      ; make zero difference in practice.)
       (terminate-old-alert)
       (let* ([mytime (send this milliseconds-evaluated)]
              [in-a-week (+ mytime (* 1000 60 60 24 7))] ; a week from now
