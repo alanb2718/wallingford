@@ -234,8 +234,9 @@
       ; (needed for interpolating mouse position)
      (set! mouse-events (pruned-event-list mouse-events (send this milliseconds-evaluated))))
 
-    ; helper function to return a new event list that includes only events that occurred after time t
-    ; (leaving one older event, which might be needed for interpolation)
+    ; Helper function to return a new event list that includes only events that occurred after time t
+    ; (leaving one older event, which might be needed for interpolation).  Note that the event list is in
+    ; reverse chronological order, i.e. the first event on the list is the most recent one.
     (define (pruned-event-list events t)
       (cond [(null? events) events]
             [(null? (cdr events)) events]

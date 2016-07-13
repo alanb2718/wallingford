@@ -99,6 +99,27 @@
    (check equal? (send-syncd r milliseconds-syncd) 500)
    (check equal? (send-syncd r get-sampling-syncd) '(push))))
 
+(define (sampling-with-while-always-true)
+  (test-case
+   "test get-sampling with a while constraint whose condition is just #t"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds button-pressed?)
+       (super-new)
+       (define-symbolic* x real?)
+       (while #t
+              #:interesting-time (if (equal? (milliseconds) 0) 'first #f)
+              (assert (equal? x (milliseconds))))))
+   (define r (new tester%))
+   ; Hack: call get-sampling when time is 0 so that the reactive-thing knows that
+   ; pull sampling should be active at time 0.  (Also see the comment in the get-sampling
+   ; method in reactive-thing.) This really ought to be done automatically as part of
+   ; initializing the new reactive-thing instance but there is an ordering problem, since
+   ; we want to do this *after* the while constraints are declared.
+   (send r get-sampling)
+   (send-thing r advance-time 10)
+   (check equal? (send-syncd r get-sampling-syncd) '(push pull))))
+
 
 
 (define sampling-tests 
@@ -110,6 +131,7 @@
    (sampling-with-always-and-when)
    (sampling-with-while)
    (sampling-with-while-and-button-press)
+   (sampling-with-while-always-true)
    ))
 
 (time (run-tests sampling-tests))

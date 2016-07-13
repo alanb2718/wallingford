@@ -46,8 +46,9 @@
     ((while test e ...)
      (error 'while "unable to automatically synthesize #:interesting-time function"))))
 ; add-while and add-while-with-time-bounds are helper macros (just for internal use)
+; if the body of the while has temporal constraints then we need to use pull sampling
 (define-syntax-rule (add-while condition interesting e ...)
-  (send this add-while-holder (while-holder (if (pull-sampling? 'condition) (gensym) #f)
+  (send this add-while-holder (while-holder (if (pull-sampling? '(e ...)) (gensym) #f)
                                             (lambda () condition)
                                             (lambda () interesting)
                                             (lambda () e ...))))
@@ -63,7 +64,8 @@
 (struct while-holder (pull-id condition interesting body) #:transparent)
 ; Helper functions for get-sampling and adding while constraints.
 (define (pull-sampling? code)
-  (includes-one-of code '((seconds) (milliseconds) (button-pressed?))))
+  (includes-one-of code '((seconds) (milliseconds) (mouse-position)
+                          (button-pressed?) (button-going-down?) (button-going-up?) (button-going-up-or-down?))))
 (define (includes-one-of code items)
   ; items should be a list of temporal function calls. Return true if code is or contains one of the calls.
   (cond [(member code items) #t]
@@ -116,7 +118,16 @@
              (set! push-sampling (or (not (null? when-holders)) (not (null? while-holders))))
              ; If any of the always constraints include a temporal reference, sampling should always include pull,
              ; so add a token (for no good reason named 'always) to the set that will always be there.
-             (cond [(pull-sampling? (send this get-always-code)) (set-add! pull-sampling 'always)])])
+             (cond [(pull-sampling? (send this get-always-code)) (set-add! pull-sampling 'always)])
+             ; If any while constraints are first active at the current time, add their ids to pull-sampling.
+             ; Temporary (?) hack: if there are while constraints that are active at time 0, be sure and call
+             ; get-sampling after the object is created so that this will be initialized properly.
+             (for ([w while-holders])
+                  (let ([why (send this wally-evaluate ((while-holder-interesting w)))]
+                        [id (while-holder-pull-id w)])
+                    ; 'why' is why this time is interesting, or #f if it's not
+                    ; 'id' is the unique ID for this while if it should use pull sampling, or #f if not
+                    (cond [(and (eq? why 'first) id) (set-add! pull-sampling id)])))])
       ; Once we get here, the variables are initialized.  Return the kind of sampling to use.
       (append (if push-sampling '(push) '()) (if (set-empty? pull-sampling) '() '(pull))))
     
@@ -129,7 +140,6 @@
       ; to which to advance.
       (cond [(and (null? when-holders) (null? while-holders)) target]
             [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
-                  (define-symbolic* found-when found-while boolean?)
                   (assert (> symbolic-time mytime))
                   (assert (or (equal? symbolic-time target)
                               (and (< symbolic-time target)
