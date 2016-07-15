@@ -90,13 +90,17 @@
         [(list 'mouse-event event-time event-x event-y state)
          ; Got a event from the viewer.  Add it to the list of mouse-events using the mouse-event struct.
          ; Formerly: to avoid cycles, we assumed the event occurred at least 1 millisecond after the thing's
-         ; current internal time.  Doesn't seem necessary any more???
+         ; current internal time.  Doesn't seem necessary any more -- although we might now end up with two
+         ; events with the same time stamp.
          (let* ([tm (if (null? event-time) (current-clock-time) event-time)]
                 [ev (mouse-event tm (point event-x event-y) state)])
            (set! mouse-events (cons ev mouse-events)))
-         ; revise when to wake up next if need be (could be wake up right now)
-         ; only pay attention to the button press (in terms of setting an alert) if this thing is being observed
-         (cond [(not (set-empty? watchers)) (set-alert-helper)])]
+         ; If this is a button press event (rather than just a move), revise when to wake up next if need be.
+         ; (This could be wake up right now.)  This is a heuristic -- later if user-defined events could be
+         ; caused just by mouse moves then we'd need to account for that as well.  In any case only pay attention
+         ; to the button press (in terms of setting an alert) if this thing is being observed
+         (cond [(and (not (set-empty? watchers)) (or (eq? state 'going-down) (eq? state 'going-up)))
+                (set-alert-helper)])]
         [(list 'milliseconds-syncd ch)
          (channel-put ch (send this milliseconds-evaluated))]
         [(list 'set-alert)
@@ -153,11 +157,15 @@
                     [x2 (point-x (mouse-event-pt e2))]
                     [y2 (point-y (mouse-event-pt e2))]
                     [t1 (mouse-event-time e1)]
-                    [t2 (mouse-event-time e2)]
-                    [ratio (/ (exact->inexact (- t1 time)) (exact->inexact (- t1 t2)))]
-                    [x (- x1 (* ratio (- x1 x2)))]
-                    [y (- y1 (* ratio (- y1 y2)))])
-               (point (round x) (round y)))]
+                    [t2 (mouse-event-time e2)])
+               ; If the two or more events have the same time stamp (which happens occasionally), then use the
+               ; position of the most recent event, which will be the first one on the list; and otherwise interpolate.
+               (if (= t1 t2)
+                   (point x1 y1)
+                   (let* ([ratio (/ (exact->inexact (- t1 time)) (exact->inexact (- t1 t2)))]
+                          [x (- x1 (* ratio (- x1 x2)))]
+                          [y (- y1 (* ratio (- y1 y2)))])
+                     (point (round x) (round y)))))]
             [else (interpolate-mouse-position time (cdr events))]))
     
     (define (button-state-helper events time)
@@ -260,7 +268,7 @@
       ; will be called again and the event accounted for.  If no interesting times found, wake up in a week.
       ; In practice this means that the user will probably have exited the program in the meantime, but it
       ; would still be ok to wake up then.  (If +infinity is allowed as a real, we could use that as the first
-      ; value, and then avoid setting up a thread at all.  (This seems a bit cleaner and also like it would
+      ; value, and then avoid setting up a thread at all.  This seems a bit cleaner and also like it would
       ; make zero difference in practice.)
       (terminate-old-alert)
       (let* ([mytime (send this milliseconds-evaluated)]
