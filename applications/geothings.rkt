@@ -7,7 +7,7 @@
          line line? line-end1 line-end2 make-line 
          circle circle? circle-center circle-radius make-circle contains-point
          color label circle-color
-         midpointline-line midpointline-midpoint make-midpointline make-midpointline-with-stays
+         midpointline midpointline-line midpointline-midpoint make-midpointline make-midpointline-with-stays
          showthing)
 
 ; Define colors as a mapping from integers to strings, so that we can put constraints on colors.

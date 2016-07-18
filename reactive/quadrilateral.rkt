@@ -57,9 +57,7 @@
                          (midpointline-midpoint side2)
                          (midpointline-midpoint side3)
                          (midpointline-midpoint side4)))
-    
-    (define/public (get-points) points)
-    
+
     (define selected-point #f)
     (when (button-going-down?)
       (let ([m (send this mouse-position)])
