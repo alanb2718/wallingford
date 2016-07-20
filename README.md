@@ -14,6 +14,6 @@ Directories:
 The hand-compiled version of the quadrilateral demo in
 reactive/compiled-quadrilateral.rkt uses the Rhea implementation of the
 Cassowary constraint solver.  To use this, check out the Racket bindings
-for Rhea from https://github.com/cdglabs/rhea.rkt.git, do a make, and then
+for Rhea from https://github.com/cdglabs/rhea.git, do a make, and then
 add a symlink from the wallingford directory to the Rhea directory.  The
 symlink should be named just 'rhea' (this is already in .gitignore).
