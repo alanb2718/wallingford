@@ -35,14 +35,6 @@
         [(list 'refresh-syncd ch)
          (refresh-helper)
          (channel-put ch null)]
-        [(list 'viewer-mouse-event event-time event)
-         ; for now always send the event info along - later only send it if the watched cares about such events
-         ; arguments are the event time, x, y, and button-state
-         (send-thing my-thing mouse-event event-time (send event get-x) (send event get-y)
-                     (cond [(send event button-down?) 'going-down]
-                           [(send event button-up?) 'going-up]
-                           [(send event get-left-down) 'down]
-                           [else 'up]))]
         [_
          (super match-thread-receive r)]))
     
@@ -66,6 +58,8 @@
              [decimal-part (remainder i 10)])
         (string-append "Time: " (number->string whole-part) "." (number->string decimal-part))))
     (define running #f)
+    (define/public (get-my-thing)
+      my-thing)
     (define/public (watch)
       (set! running #t)
       (send my-thing watched-by this)
@@ -104,10 +98,17 @@
     (define myviewer null)  ; hack - initialize myviewer later to avoid initialization cycle
     (define/public (set-viewer v) 
       (set! myviewer v))
-    ; Catch mouse events (moving or button up or button down)
+    ; Catch mouse events (moving or button up or button down) and send them directly on to the thing I'm viewing
     (define/override (on-event event)
       (cond [(or (send event button-changed?) (send event moving?))
-             (send-thing myviewer viewer-mouse-event null event)]))
+             (let ([thing (send myviewer get-my-thing)]
+                   [x (send event get-x)]
+                   [y (send event get-y)]
+                   [state (cond [(send event button-down?) 'going-down]
+                                [(send event button-up?) 'going-up]
+                                [(send event get-left-down) 'down]
+                                [else 'up])])
+               (send-thing thing mouse-event null x y state))]))
     ; Call the superclass init, passing on all init args
     (super-new)))
 
