@@ -1,8 +1,10 @@
 #lang s-exp rosette
-; drag a circle while the button is pressed
+; make a circle follow the mouse while the button is pressed
+; This captures one key aspect of dragging (although not all - see quadrilateral.rkt for a
+; more realistic dragging example that also includes selection).
 (require "reactive.rkt")
 
-(define dragging%
+(define follow-mouse%
   (class reactive-thing%
     (inherit button-pressed? image mouse-position)
     (super-new)
@@ -12,5 +14,5 @@
     (send this solve)))
 
 
-(define p (new dragging%))
+(define p (new follow-mouse%))
 (make-viewer p)

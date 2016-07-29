@@ -1,11 +1,11 @@
 #lang s-exp rosette
-; hand compiled code for dragging.rkt
+; hand compiled code for follow-mouse.rkt
 (require "../applications/geothings.rkt")
 (require "reactive.rkt")
 (require "abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
 
-(define compiled-dragging%
+(define compiled-follow-mouse%
   (class compiled-reactive-thing%
     (inherit seconds image button-pressed? button-going-up? mouse-position)
     (super-new)
@@ -33,6 +33,6 @@
                                        (send this get-mouse-events))])
         (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets)))))))
 
-(make-viewer (new compiled-dragging%) #:title "Compiled version of dragging" #:sleep-time 0.01)
+(make-viewer (new compiled-follow-mouse%) #:title "Compiled version of follow-mouse" #:sleep-time 0.01)
 
 
