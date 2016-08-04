@@ -7,7 +7,7 @@
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
 
-(provide when while racket-when reactive-thing%)
+(provide when while racket-when max-value min-value reactive-thing% interesting-time?)
 
 ; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
 ; or a subclass since they reference 'this'.
@@ -71,6 +71,24 @@
   (cond [(member code items) #t]
         [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
         [else #f]))
+; interesting-time? will be rebound when evaluating a while -- it will be the value of the interesting-time function
+; for that while at the current time.  It is used for accumulating operators such as max-value.
+(define interesting-time? (make-parameter #f))
+
+; max-value and min-value macros
+; temporary version hacked to have a symbol as an additional argument.  This is used to save the current max in a hash.
+;(define-syntax-rule (max-value expr id)
+;   (send this max-helper (lambda () (send this wally-evaluate expr)) id (interesting-time?)))
+; and here are the real versions, which use gensym
+(define-syntax-rule (max-value expr)
+  (max-or-min max expr))
+(define-syntax-rule (min-value expr)
+  (max-or-min min expr))
+(define-syntax (max-or-min stx)
+  (syntax-case stx ()
+    [(_ fn expr)
+     (with-syntax ([id (datum->syntax stx (gensym))])
+       #'(send this max-min-helper fn (lambda () (send this wally-evaluate expr)) 'id (interesting-time?)))]))
 
 (define reactive-thing%
   (class abstract-reactive-thing%
@@ -87,12 +105,25 @@
     ; to implement previous, we just need to evaluate the expression in the current (i.e. old) solution
     (define/public (previous expr)
       (send this wally-evaluate expr))
-    
+
+    ; these methods are for use by the macros (not for general public use)
     (define/public (add-when-holder holder)
       (set! when-holders (cons holder when-holders)))
     (define/public (add-while-holder holder)
       (set! while-holders (cons holder while-holders)))
-    
+    ; max-min-values holds the current max (or min) value for a max-value or min-value expression, indexed by a gensym'd id
+    ; for that occurence of max-value or min-value
+    (define max-min-values (make-hasheq))
+    (define/public (max-min-helper max-or-min f id interesting)
+      ; For max-value: if max-value isn't initialized yet or if this is the first time in the while, save the current maximum
+      ; and otherwise update it by finding the max of the old and new values.
+      ; And analogously for min-value.
+      (let ([updated-value (if (or (not (hash-has-key? max-min-values id)) (eq? interesting 'first))
+                               (f)
+                               (max-or-min (f) (hash-ref max-min-values id)))])
+        (hash-set! max-min-values id updated-value)
+        updated-value))
+
     (define/override (milliseconds)
       symbolic-time)
     (define/override (milliseconds-evaluated)
@@ -184,7 +215,11 @@
                  ; global assertion store, so add that back in.  This includes the assertion that symbolic-time
                  ; equals next-time.  Then solve again.
                  (for-each (lambda (w) ((when-holder-body w))) active-whens)
-                 (for-each (lambda (w) ((while-holder-body w))) active-whiles)
+                 ; provide a parameter interesting-time? that is bound to a value indicating whether the current time is interesting,
+                 ; and evaluate the while-holder's body in that environment
+                 (for-each (lambda (w) (parameterize ([interesting-time? (send this wally-evaluate ((while-holder-interesting w)))])
+                                         ((while-holder-body w))))
+                           active-whiles)
                  (for-each (lambda (a) (assert a)) saved-asserts)
                  (send this solve)
                  ; Update the sampling regime if necessary, and if this object might have changed, notify viewers.
