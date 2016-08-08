@@ -14,6 +14,7 @@
  "mouse-tests.rkt"
  "when-tests.rkt"
  "while-tests.rkt"
+ "max-min-tests.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
  "compiled-when-tests.rkt"
