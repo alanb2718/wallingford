@@ -89,6 +89,13 @@
     [(_ fn expr)
      (with-syntax ([id (datum->syntax stx (gensym))])
        #'(send this max-min-helper fn (lambda () (send this wally-evaluate expr)) 'id (interesting-time?)))]))
+; integration
+(define-syntax (integral stx)
+  (syntax-case stx ()
+    [(_ expr)
+     (with-syntax ([intgl (symbolic-integral expr)]
+                   [id (datum->syntax stx (gensym))])
+       #'(send this integral-helper fn (lambda () (send this wally-evaluate intgl)) 'id (interesting-time?)))]))
 
 (define reactive-thing%
   (class abstract-reactive-thing%
@@ -111,18 +118,29 @@
       (set! when-holders (cons holder when-holders)))
     (define/public (add-while-holder holder)
       (set! while-holders (cons holder while-holders)))
-    ; max-min-values holds the current max (or min) value for a max-value or min-value expression, indexed by a gensym'd id
-    ; for that occurence of max-value or min-value
-    (define max-min-values (make-hasheq))
+    ; For max and min, accumulator-values holds the current max (or min) value for a max-value or min-value
+    ; expression, indexed by a gensym'd id for that occurence of max-value or min-value.
+    ; For integral, accumulator-values holds the value of the expression for the integral at the start of
+    ; the program or the start of the current 'while' in which it occurs.
+    (define accumulator-values (make-hasheq))
     (define/public (max-min-helper max-or-min f id interesting)
       ; For max-value: if max-value isn't initialized yet or if this is the first time in the while, save the current maximum
       ; and otherwise update it by finding the max of the old and new values.
       ; And analogously for min-value.
-      (let ([updated-value (if (or (not (hash-has-key? max-min-values id)) (eq? interesting 'first))
+      (let ([updated-value (if (or (not (hash-has-key? accumulator-values id)) (eq? interesting 'first))
                                (f)
-                               (max-or-min (f) (hash-ref max-min-values id)))])
-        (hash-set! max-min-values id updated-value)
+                               (max-or-min (f) (hash-ref accumulator-values id)))])
+        (hash-set! accumulator-values id updated-value)
         updated-value))
+    ; symbolic integration - super simple to start with
+    (define (symbolic-integral expr var)
+      (match expr
+        [v #:when (equal? v var) (list '* 0.5 var var)]
+        [(? number? n) (list '* n var)]
+        [_ (error "unable to find the symbolic integral of ~a \n" expr)]))
+    (define/public (integral-helper f id interesting)
+      )
+
 
     (define/override (milliseconds)
       symbolic-time)
