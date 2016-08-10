@@ -19,79 +19,108 @@
        (always (equal? x (integral 2)))
        (define/public (get-x) (send this wally-evaluate x))))
    (define r (new tester%))
-   (send-thing r advance-time 10)
+   (send r initialize)
+   (send-syncd r advance-time-syncd 10)
    (check equal? (send-syncd r milliseconds-syncd) 10)
    (check equal? (send r get-x) 20)
-   (send-thing r advance-time 50)
+   (send-syncd r advance-time-syncd 50)
    (check equal? (send-syncd r milliseconds-syncd) 50)
    (check equal? (send r get-x) 100)))
 
-(define (max-min-in-while)
+(define (integral-in-simple-while-hit-start)
   (test-case
-   "test calls to max-value and min-value in a while"
+   "test calls to integral in a simple while that is true for one time interval (and happen to get time when the interval begins)"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       (define-symbolic* x y z real?)
-       (assert (equal? x 1))
-       (assert (equal? y 2))
-       (assert (equal? z 3))
+       (define-symbolic* x real?)
+       (assert (equal? x 0))
        (send this solve)
        (stay x)
-       (stay y)
-       (stay z)
        (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
-              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
-              (assert (equal? x (max-value (milliseconds))))
-              ; y is equal to 3 times the number of milliseconds up to ms=50, then goes back down
-              ; (note that 50 is thus an interesting time!)
-              (assert (equal? y (* 3 (max-value (let ([m (milliseconds)]) (if (<= m 50) m (- 100 m)))))))
-              ; z is the negation of y, basically
-              (assert (equal? z (* 3 (min-value (let ([m (milliseconds)]) (if (<= m 50) (- m) (- m 100))))))))
-       (define/public (get-x) (send this wally-evaluate x))
-       (define/public (get-y) (send this wally-evaluate y))
-       (define/public (get-z) (send this wally-evaluate z))))
+              (assert (equal? x (integral 2))))
+       (define/public (get-x) (send-syncd this evaluate-syncd (lambda () (send this wally-evaluate x))))))
    (define r (new tester%))
-   
-   (send-thing r advance-time 5)
-   (check equal? (send-syncd r milliseconds-syncd) 5)
-   ; outside of while at this time, so x, y, and z shoud have their initial values
-   (check equal? (send r get-x) 1)  
-   (check equal? (send r get-y) 2)
-   (check equal? (send r get-z) 3)
-   
-   (send-thing r advance-time 10)
-   ; while should now be active
-   (check equal? (send-syncd r milliseconds-syncd) 10)
-   (check equal? (send r get-x) 10)
-   (check equal? (send r get-y) 30)
-   (check equal? (send r get-z) -30)
-   
-   (send-thing r advance-time 60)
-   (check equal? (send-syncd r milliseconds-syncd) 60)
-   (check equal? (send r get-x) 60)
-   (check equal? (send r get-y) 150)  ; should stop at t=50 and update y and z
-   (check equal? (send r get-z) -150)
-   
-   (send-thing r advance-time 75)
-   (check equal? (send-syncd r milliseconds-syncd) 75)
-   (check equal? (send r get-x) 75)
-   (check equal? (send r get-y) 150)
-   (check equal? (send r get-z) -150)
-   
-   (send-thing r advance-time 200)
-   (check equal? (send-syncd r milliseconds-syncd) 200)
-   (check equal? (send r get-x) 100) ; x stops at 100
-   (check equal? (send r get-y) 150)
-   (check equal? (send r get-z) -150)))
+   (send r initialize)
+   (send-syncd r advance-time-syncd 5)
+   (check equal? (send r get-x) 0) ; outside of while at this time, so x should have its initial value
+   (send-syncd r advance-time-syncd 10)  ; while should now be active (but just starting)
+   (check equal? (send r get-x) 0)
+   (send-syncd r advance-time-syncd 60)  ; while still active
+   (check equal? (send r get-x) 100)
+   (send-syncd r advance-time-syncd 75)
+   (check equal? (send r get-x) 130)
+   (send-syncd r advance-time-syncd 200) ; while becomes inactive at 100
+   (check equal? (send r get-x) 180)))
 
+(define (integral-in-simple-while-miss-start)
+  (test-case
+   "test calls to integral in a simple while that is true for one time interval (but miss the time the interval begins)"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* x real?)
+       (assert (equal? x 0))
+       (send this solve)
+       (stay x)
+       (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
+              (assert (equal? x (integral 2))))
+       (define/public (get-x) (send-syncd this evaluate-syncd (lambda () (send this wally-evaluate x))))))
+   (define r (new tester%))
+   (send r initialize)
+   (send-syncd r advance-time-syncd 5)
+   (check equal? (send r get-x) 0)
+   (send-syncd r advance-time-syncd 60)
+   (check equal? (send r get-x) 100)
+   (send-syncd r advance-time-syncd 75)
+   (check equal? (send r get-x) 130)
+   (send-syncd r advance-time-syncd 200) ; while becomes inactive at 100
+   (check equal? (send r get-x) 180)))
+
+
+(define (integral-in-repeating-while)
+  (test-case
+   "test calls to integral in a while that is true for multiple time intervals"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-symbolic* x real?)
+       (assert (equal? x 0))
+       (send this solve)
+       (stay x)
+       ; the while condition holds for the first 10 milliseconds of every 100 millisecond interval
+       (while (<= (remainder (milliseconds) 100) 10)
+              #:interesting-time (let ([r (remainder (milliseconds) 100)])
+                                   (cond [(zero? r) 'first]
+                                         [(equal? r 10) 'last]
+                                         [else #f]))
+              (assert (equal? x (integral 2))))
+       (define/public (get-x) (send-syncd this evaluate-syncd (lambda () (send this wally-evaluate x))))))
+   (define r (new tester%))
+   (send r initialize)
+   (send-syncd r advance-time-syncd 5)
+   (check equal? (send r get-x) 10)
+   (send-syncd r advance-time-syncd 10)
+   (check equal? (send r get-x) 20)
+   (send-syncd r advance-time-syncd 50)
+   (check equal? (send r get-x) 20)
+   (send-syncd r advance-time-syncd 100)
+   (check equal? (send r get-x) 0)
+   (send-syncd r advance-time-syncd 105)
+   (check equal? (send r get-x) 10)
+   (send-syncd r advance-time-syncd 150)
+   (check equal? (send r get-x) 20)))
 
 (define integral-tests 
   (test-suite+
    "run tests for integral in reactive-thing"
    (integral-in-always)
-   ;(integral-in-while)
+   (integral-in-simple-while-hit-start)
+   (integral-in-simple-while-miss-start)
+   (integral-in-repeating-while)
    ))
 
 (time (run-tests integral-tests))

@@ -20,7 +20,8 @@
     ; my-time is the compiled equivalent of symbolic-time
     (define my-time 0)
     (super-new)
-    
+    (define/override (initialize)
+      (void))
     (define/override (milliseconds)
       my-time)
     ; for use by subclasses - not for external use really

@@ -15,6 +15,7 @@
  "when-tests.rkt"
  "while-tests.rkt"
  "max-min-tests.rkt"
+ "integral-tests.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
  "compiled-when-tests.rkt"
