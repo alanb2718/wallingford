@@ -117,7 +117,7 @@
     (assert (equal? symbolic-time 0))
     (send this solve)
     (stay symbolic-time)
-    (define/override (initialize)
+    (define/override (start)
       (update-time 0))
     
     ; to implement previous, we just need to evaluate the expression in the current (i.e. old) solution

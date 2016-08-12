@@ -113,10 +113,11 @@
         [_
          (error "thread message not understood: ~a\n" r)]))
     
-    ; initialize should be called as the last step for initializing a new thing, in particular after all of the
+    ; start should be called as the last step for initializing a new thing, in particular after all of the
     ; when and while constraints are added.  It should initialize the time to 0 and solve any active constraints.
-    (define/public (initialize)
-      (error "initialize -- subclass responsibility\n"))
+    (define/public (start)
+      ; default is to not do anything - this is overridden in reactive-thing%
+      (void))
 
     ; get-sampling says how to sample.  It should be one of '(push) '(pull) '(push pull) or '()
     (define/public (get-sampling)
