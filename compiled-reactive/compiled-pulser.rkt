@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ; hand compiled code for pulsing circle example
 (require "../applications/geothings.rkt")
-(require "reactive.rkt")
+(require "../reactive/reactive.rkt")
 (require "compiled-reactive-thing.rkt")
 (provide compiled-pulser%)
 

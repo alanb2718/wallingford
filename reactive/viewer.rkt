@@ -4,7 +4,7 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "abstract-reactive-thing.rkt")
-(require "compiled-reactive-thing.rkt")
+(require "../compiled-reactive/compiled-reactive-thing.rkt")
 
 (provide viewer% make-viewer)
 

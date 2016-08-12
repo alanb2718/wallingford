@@ -1,7 +1,7 @@
 #lang s-exp rosette
 ; hand compiled code selecting-live3.rkt
-(require "reactive.rkt")
-(require "abstract-reactive-thing.rkt")
+(require "../reactive/reactive.rkt")
+(require "../reactive/abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
 
 ; put item as the first element in the list referred to by the box things

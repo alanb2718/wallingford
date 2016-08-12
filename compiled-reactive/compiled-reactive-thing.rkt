@@ -11,7 +11,7 @@
 (require racket/gui/base)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
-(require "abstract-reactive-thing.rkt")
+(require "../reactive/abstract-reactive-thing.rkt")
 
 (provide compiled-reactive-thing%)
 

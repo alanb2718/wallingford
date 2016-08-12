@@ -5,7 +5,7 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "../reactive/reactive.rkt")
-(require "../reactive/compiled-reactive-thing.rkt")
+(require "../compiled-reactive/compiled-reactive-thing.rkt")
 
 (provide compiled-while-tests)
 

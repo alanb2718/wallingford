@@ -1,8 +1,8 @@
 #lang s-exp rosette
 ; hand compiled code for quadrilateral.rkt
 (require "../applications/geothings.rkt")
-(require "reactive.rkt")
-(require "abstract-reactive-thing.rkt")
+(require "../reactive/reactive.rkt")
+(require "../reactive/abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
 (require "../rhea/rhea.rkt")   ; this is a symlink in the reactive/ directory to the actual rhea directory
 
