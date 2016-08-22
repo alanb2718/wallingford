@@ -5,7 +5,7 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 
-(provide abstract-reactive-thing% send-thing send-syncd
+(provide abstract-reactive-thing% send-thing send-syncd define-public-symbolic*
          mouse-event mouse-event-time mouse-event-pt mouse-event-button-state)
 ; Each reactive thing has its own thread.  Any messages from another thread should use send-thing
 ; or send-syncd for synchronization, rather than sending an ordinary message to the thing.
@@ -23,6 +23,22 @@
   (let ([c (make-channel)])
     (thread-send (send thing get-thread) (list 'msg c args ...))
     (channel-get c)))
+
+; Macro to define a symbolic variable and also a sync'd access method (mostly for writing tests). A call
+;         (define-public-symbolic* x y)
+; defines two Rosette symbolic variables x and y, and generates access methods get-x and get-y.
+; The access methods use evaluate-syncd so that they go via the thing's thread.
+; This is for use within a class definition, since it generates a send to 'this' among other things.
+(require (for-syntax racket/syntax))
+(define-syntax (define-public-symbolic* stx)
+  (syntax-case stx ()
+    [(_ type)  ; base case for recursion - no variables to define
+     #'(void)]
+    [(_ v1 vs ... type)
+     (with-syntax ([getter (format-id stx "get-~a" #'v1)])
+       #'(begin (define-symbolic* v1 type)
+                (define/public (getter) (send-syncd this evaluate-syncd (lambda () (send this wally-evaluate v1))))
+                (define-public-symbolic* vs ... type)))]))
 
 ; all times are relative to the time the program is started
 (define time-at-startup (current-milliseconds))
@@ -105,7 +121,7 @@
          (channel-put ch (send this milliseconds-evaluated))]
         [(list 'set-alert)
          (set-alert-helper)]
-        ; evaluate thunk for side effects only (no syncronization)
+        ; evaluate thunk for side effects only (no synchronization)
         [(list 'do-evaluate thunk)
          (thunk)]
         [(list 'evaluate-syncd ch thunk)

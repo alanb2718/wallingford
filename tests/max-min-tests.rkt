@@ -15,14 +15,11 @@
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       (define-symbolic* x y z real?)
+       (define-public-symbolic* x y z real?)
        ; x should keep getting bigger as time advances, y should keep getting smaller, and z should stay stuck at 0
        (always (equal? x (* 2 (max-value (milliseconds)))))
        (always (equal? y (* 2 (min-value (- 0 (milliseconds))))))
-       (always (equal? z (* 2 (min-value (milliseconds)))))
-       (define/public (get-x) (send this wally-evaluate x))
-       (define/public (get-y) (send this wally-evaluate y))
-       (define/public (get-z) (send this wally-evaluate z))))
+       (always (equal? z (* 2 (min-value (milliseconds)))))))
    (define r (new tester%))
    (send-thing r advance-time 10)
    (check equal? (send-syncd r milliseconds-syncd) 10)
@@ -47,7 +44,7 @@
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       (define-symbolic* x y z real?)
+       (define-public-symbolic* x y z real?)
        (assert (equal? x 1))
        (assert (equal? y 2))
        (assert (equal? z 3))
@@ -62,10 +59,7 @@
               ; (note that 50 is thus an interesting time!)
               (assert (equal? y (* 3 (max-value (let ([m (milliseconds)]) (if (<= m 50) m (- 100 m)))))))
               ; z is the negation of y, basically
-              (assert (equal? z (* 3 (min-value (let ([m (milliseconds)]) (if (<= m 50) (- m) (- m 100))))))))
-       (define/public (get-x) (send this wally-evaluate x))
-       (define/public (get-y) (send this wally-evaluate y))
-       (define/public (get-z) (send this wally-evaluate z))))
+              (assert (equal? z (* 3 (min-value (let ([m (milliseconds)]) (if (<= m 50) (- m) (- m 100))))))))))
    (define r (new tester%))
    
    (send-thing r advance-time 5)
