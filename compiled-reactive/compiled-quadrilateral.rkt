@@ -4,7 +4,7 @@
 (require "../reactive/reactive.rkt")
 (require "../reactive/abstract-reactive-thing.rkt")
 (require "compiled-reactive-thing.rkt")
-(require "../rhea/rhea.rkt")   ; this is a symlink in the reactive/ directory to the actual rhea directory
+(require "../rhea/rhea.rkt")   ; this is a symlink in the wallingford/ directory to the actual rhea directory
 
 ; functions to make symbolic objects using Cassowary variables
 (define (make-cassowary-point x y)

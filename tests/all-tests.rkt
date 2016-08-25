@@ -17,6 +17,7 @@
  "max-min-tests.rkt"
  "symbolic-integration-tests.rkt"
  "integral-tests.rkt"
+ "integrals-and-events.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
  "compiled-when-tests.rkt"
