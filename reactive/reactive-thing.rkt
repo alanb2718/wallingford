@@ -34,7 +34,8 @@
     ;   (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100)) ...
     ; or this:
     ;   (while (and (<= 50 (milliseconds)) (>= 100 (milliseconds))) ...
-    ; plus the analogous versions for the lower bound test, so 4 possible combinations in all.  (Is there a better way to do this??)
+    ; plus the analogous versions for the lower bound test, so 4 possible combinations in all.
+    ; NOTE: this should be rewritten in better style -- see e.g. the integral macro, which uses syntax-parse
     ((while (and (<= lower (milliseconds)) (<= (milliseconds) upper)) e ...)
      (add-while-with-time-bounds lower upper e ...))
     ((while (and (<= lower (milliseconds)) (>= upper (milliseconds))) e ...)
@@ -90,17 +91,21 @@
      (with-syntax ([id (datum->syntax stx (gensym))])
        #'(send this max-min-helper fn (lambda () (send this wally-evaluate expr)) 'id (interesting-time?)))]))
 ; integral macro
+; The form is (integral expr) with additional optional keyword arguments as follows:
+;     #:var v  -- variable of integration; default is (milliseconds) -- note that an expression is allowed here
+;     #:numeric or #:symbolic -- which kind of integration to use.  Default is to try symbolic, and if that doesn't work, use numeric
+;     #:dt d -- time step (only allowed with #:numeric)
+; Example: (integral (sin x) #:var x #:numeric #:dt 0.1)
 (require (for-syntax "symbolic-integration.rkt"))  ; function to do simple symbolic integration
+(require (for-syntax syntax/parse))
 (define-syntax (integral stx)
-  (syntax-case stx ()
-    [(_ expr var)  ; case with explicit variable of integration
-     (with-syntax ([intgl (datum->syntax stx (symbolic-integral (syntax->datum #'expr) (syntax->datum #'var)))]
-                   [id (datum->syntax stx (gensym))])
-       #'(send this integral-helper (lambda () (send this wally-evaluate intgl)) 'id (interesting-time?)))]
-    [(_ expr)      ; default variable of integration is (milliseconds)
-     (with-syntax ([intgl (datum->syntax stx (symbolic-integral (syntax->datum #'expr) '(milliseconds)))]
+  (syntax-parse stx
+    [(integral e:expr (~or (~optional (~seq #:var v:expr)) (~optional #:numeric) (~optional #:symbolic) (~optional (~seq #:dt d:expr))) ...)
+     (with-syntax ([intgl (datum->syntax stx (symbolic-integral (syntax->datum #'e)
+                                                                (if (attribute v) (syntax->datum #'v) '(milliseconds))))]
                    [id (datum->syntax stx (gensym))])
        #'(send this integral-helper (lambda () (send this wally-evaluate intgl)) 'id (interesting-time?)))]))
+
 
 (define reactive-thing%
   (class abstract-reactive-thing%
