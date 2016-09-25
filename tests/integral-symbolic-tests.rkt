@@ -1,12 +1,12 @@
 #lang s-exp rosette
-;; unit tests for integral in reactive-thing%
+;; unit tests for integral in reactive-thing% using the symbolic option, either explicitly or implicitly
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "../reactive/reactive.rkt")
 
-(provide integral-tests)
+(provide integral-symbolic-tests)
 
 ; The only tests with various different expressions to integrate are integral-in-always and integral-with-explict-variable-of-integration.
 ; The other tests just use a constant (because arguably the other functionality being tested is independent of the symbolic integration function).
@@ -24,7 +24,7 @@
        (inherit milliseconds)
        (super-new)
        (define-public-symbolic* x y real?)
-       (always (equal? x (integral 2)))
+       (always (equal? x (integral 2 #:symbolic)))  ; do one that explicitly insists that this be symbolic
        (always (equal? y (integral (milliseconds))))))
    (define r (new tester%))
    (send r start)
@@ -122,7 +122,7 @@
 
 (define (integral-with-explict-variable-of-integration)
   (test-case
-   "test call to integral in an always"
+   "test call to integral with an explicit variable of integration"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds seconds)
@@ -149,9 +149,9 @@
    (check equal? (send r get-z2) 20000)))
 
 
-(define integral-tests 
+(define integral-symbolic-tests 
   (test-suite+
-   "run tests for integral in reactive-thing"
+   "run tests for integral in reactive-thing% using the symbolic option, either explicitly or implicitly"
    (integral-in-always)
    (integral-in-simple-while-hit-start)
    (integral-in-simple-while-miss-start)
@@ -159,4 +159,4 @@
    (integral-with-explict-variable-of-integration)
    ))
 
-(time (run-tests integral-tests))
+(time (run-tests integral-symbolic-tests))

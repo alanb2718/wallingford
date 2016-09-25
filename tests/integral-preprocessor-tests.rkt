@@ -1,10 +1,10 @@
 #lang s-exp rosette
-;; unit tests for symbolic-integration helper function
+;; unit tests for integration preprocessor
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
-(require "../reactive/symbolic-integration.rkt")
+(require "../reactive/integral-preprocessor.rkt")
 
-(provide symbolic-integration-tests)
+(provide integral-preprocessor-tests)
 
 ; The only tests with various different expressions to integrate are integral-in-always and integral-with-explict-variable-of-integration.
 ; The other tests just use a constant (because arguably the other functionality being tested is independent of the symbolic integration function).
@@ -39,13 +39,13 @@
 
 (define (too-difficult-expression-test)
   (test-case
-   "expressions that are too difficult"
-   (check-exn exn:fail? (lambda () (symbolic-integral '(sin x) 'x)))
-   (check-exn exn:fail? (lambda () (symbolic-integral '(* x x) 'x)))  ; needs to use expt
-   (check-exn exn:fail? (lambda () (symbolic-integral '(/ 2 x) 'x)))
+   "expressions that are too difficult for the symbolic integrator - these should return #f"
+   (check-false (symbolic-integral '(sin x) 'x))
+   (check-false (symbolic-integral '(* x x) 'x))  ; needs to use expt
+   (check-false (symbolic-integral '(/ 2 x) 'x))
    ))
 
-(define symbolic-integration-tests 
+(define integral-preprocessor-tests 
   (test-suite+
    "run tests for symbolic integration function"
    (atomic-expression-tests)
@@ -54,4 +54,4 @@
    (too-difficult-expression-test)
    ))
 
-(time (run-tests symbolic-integration-tests))
+(time (run-tests integral-preprocessor-tests))
