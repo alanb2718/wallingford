@@ -119,7 +119,7 @@
              #'(send this integral-symbolic-run-time-fn (lambda () (send this wally-evaluate s)) 'id (interesting-time?)))
            (with-syntax ([d (datum->syntax stx dt)]
                          [id (datum->syntax stx (gensym))])  ; numeric version
-             #'(send this integral-numeric-run-time-fn (lambda () (send this wally-evaluate e)) 'id d))))]))
+             #'(send this integral-numeric-run-time-fn (lambda () (send this wally-evaluate e)) 'id (interesting-time?) d))))]))
 
 
 (define reactive-thing%
@@ -171,10 +171,23 @@
              (hash-set! accumulator-values id (f))
              0.0]
             [else (- (f) (hash-ref accumulator-values id))]))
-    ; version for code for numeric integration
-    (define/public (integral-numeric-run-time-fn f id dt)
-      (error "not finished\n"))
-
+    ; Version of runtime integral method for use with code for numeric integration.  Calling this method should return the current
+    ; value of (integral expr) plus do some bookkeeping.
+    ; For numeric integration, while the integral is active, accumulator-values holds instances of nstruct.
+    (struct nstruct (dt last-time last-value sum) #:transparent)
+    (define/public (integral-numeric-run-time-fn f id interesting dt)
+      (let* ([t (send this milliseconds-evaluated)]
+             [cur-value (f)]
+             [new-sum (if (hash-has-key? accumulator-values id)
+                          (let* ([old-struct (hash-ref accumulator-values id)]
+                                 [delta-sum (* 0.5 (+ (nstruct-last-value old-struct) cur-value) dt)])
+                            (+ (nstruct-sum old-struct) delta-sum))
+                          0)])
+        (if (eq? interesting 'last)
+            (hash-remove! accumulator-values id)
+            (hash-set! accumulator-values id (nstruct dt t cur-value new-sum)))
+        new-sum))
+    
     (define/override (milliseconds)
       symbolic-time)
     (define/override (milliseconds-evaluated)
