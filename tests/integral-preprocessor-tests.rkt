@@ -47,7 +47,7 @@
 
 (define integral-preprocessor-tests 
   (test-suite+
-   "run tests for symbolic integration function"
+   "unit tests for symbolic integration function"
    (atomic-expression-tests)
    (compound-expression-tests)
    (double-triple-integral-tests)

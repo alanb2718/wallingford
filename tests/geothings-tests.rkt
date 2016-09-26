@@ -54,7 +54,7 @@
 
 (define geothings-tests 
   (test-suite+
-   "run all geothings tests"
+   "unit tests for geothings"
    (midpoint-test)
    ))
 

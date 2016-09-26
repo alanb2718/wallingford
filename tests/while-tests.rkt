@@ -201,7 +201,7 @@
 
 (define while-tests 
   (test-suite+
-   "run tests for while in reactive-thing"
+   "unit tests for while in reactive-thing%"
    (one-while)
    (one-while-hop-over)
    (one-while-hop-over-synthesize-interesting-time)

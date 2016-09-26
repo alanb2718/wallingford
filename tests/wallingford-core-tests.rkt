@@ -181,7 +181,7 @@
 
 (define wallingford-core-tests 
   (test-suite+ ; Rosette specific test-suite that will clear relevant rosette state upon finishing 
-   "run general tests for wallingford"
+   "general unit tests for wallingford"
    (soft-cn-test)
    (cn-priorities-test)
    (cn-count-test)

@@ -74,7 +74,7 @@
 
 (define electrical-things-dynamic-tests 
   (test-suite+
-   "run all electrical things dynamic tests"
+   "unit tests for dynamic versions of electrical things"
    (battery-resistor-fixed-voltage-resistance-test)
    (voltage-divider-test)
    (battery-resistor-changing-voltage-resistance-test)

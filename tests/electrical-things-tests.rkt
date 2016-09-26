@@ -67,7 +67,7 @@
 
 (define electrical-things-tests 
   (test-suite+
-   "run all electrical things tests"
+   "unit tests for electrical things"
    (battery-resistor-fixed-voltage-resistance-test)
    (voltage-divider-test)
    (parallel-resistors-test)

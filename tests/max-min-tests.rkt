@@ -97,7 +97,7 @@
 
 (define max-min-tests 
   (test-suite+
-   "run tests for max and min in reactive-thing"
+   "unit tests for max and min in reactive-thing%"
    (max-min-in-always)
    (max-min-in-while)
    ))

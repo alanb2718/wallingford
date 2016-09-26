@@ -82,7 +82,7 @@
 
 (define compiled-when-tests 
   (test-suite+
-   "run tests for when in compiled-reactive-thing"
+   "unit tests for when in compiled-reactive-thing"
    (advance-time-one-when)
    (advance-time-multiple-whens)
    ))

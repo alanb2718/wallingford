@@ -55,7 +55,7 @@
 
 (define integral-bad-arg-tests 
   (test-suite+
-   "run tests for integral with bad arguments"
+   "unit tests for integral with bad arguments"
    (both-symbolic-and-numeric)
    (dt-with-symbolic)
    (dt-alone)

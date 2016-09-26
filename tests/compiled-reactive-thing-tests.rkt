@@ -90,7 +90,7 @@
 
 (define compiled-reactive-thing-tests 
   (test-suite+
-   "run tests for compiled-reactive-thing"
+   "unit tests for compiled-reactive-thing"
    (advance-time-simple)
    (button-events)
    ))

@@ -130,7 +130,7 @@
 
 (define compiled-while-tests 
   (test-suite+
-   "run tests for compiled versions of while"
+   "unit tests for compiled versions of while"
    (one-while)
    (one-while-hop-over)
    (one-while-track-times)

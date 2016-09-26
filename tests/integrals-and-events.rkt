@@ -41,7 +41,7 @@
 
 (define integrals-and-events
   (test-suite+
-   "run tests for integrals used in when conditions"
+   "unit tests for integrals used in when conditions"
    (simple-integral-in-event)
    ))
 

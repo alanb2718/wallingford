@@ -117,7 +117,7 @@
 
 (define when-tests 
   (test-suite+
-   "run tests for when in reactive-thing"
+   "unit tests for when in reactive-thing%"
    (advance-time-one-when)
    (advance-time-one-when-separate-var)
    (advance-time-one-when-separate-var-soft-cn)

@@ -82,7 +82,7 @@
 
 (define always-dynamic-tests 
   (test-suite+
-   "run always tests"
+   "unit tests for dynamic always constraints"
    (assign-always-test)
    (assign-always-required-test)
    (struct-always-set-test)

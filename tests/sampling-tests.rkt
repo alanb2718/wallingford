@@ -124,7 +124,7 @@
 
 (define sampling-tests 
   (test-suite+
-   "run sampling tests for reactive-thing"
+   "unit tests for sampling in reactive-thing%"
    (sampling-static)
    (sampling-temporal-always)
    (sampling-with-when)

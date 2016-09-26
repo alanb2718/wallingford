@@ -126,7 +126,7 @@
 
 (define mouse-tests 
   (test-suite+
-   "run tests for mouse and button handling"
+   "unit tests for mouse and button handling"
    (button-events)
    (button-state)
    (mouse-position)

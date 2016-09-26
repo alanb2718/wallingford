@@ -19,7 +19,7 @@
 
 (define reactive-thing-tests 
   (test-suite+
-   "run basic tests for reactive-thing"
+   "basic unit tests for reactive-thing%"
    (advance-time-simple)
    ))
 

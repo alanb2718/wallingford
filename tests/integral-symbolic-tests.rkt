@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for integral in reactive-thing% using the symbolic option, either explicitly or implicitly
+;; unit tests for integral using a symbolic solution
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
@@ -151,7 +151,7 @@
 
 (define integral-symbolic-tests 
   (test-suite+
-   "run tests for integral in reactive-thing% using the symbolic option, either explicitly or implicitly"
+   "unit tests for integral using a symbolic solution"
    (integral-in-always)
    (integral-in-simple-while-hit-start)
    (integral-in-simple-while-miss-start)
