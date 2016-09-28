@@ -2,6 +2,10 @@
 
 (provide integral-preprocessor symbolic-integral)
 
+; default values for variable of integration and dt (for numeric integration only)
+(define default-variable-of-integration '(milliseconds))
+(define default-dt 10)
+
 ; The integral-preprocessor function takes the expression being integrated, e.g. (integral expr)
 ; plus additional arguments, representing keyword arguments in the source.
 ;   var is the variable of integration - this has a default value of (milliseconds), provided by the caller though
@@ -20,10 +24,13 @@
   (when (and numeric-kw symbolic-kw) (error "can only specify one of #:numeric and #:symbolic"))
   (when (and (not numeric-kw) dt) (error "#:dt can only be specified in conjunction with #:numeric"))
   ; try to compute the symbolic integral and bind it to s, unless #:numeric is specified
-  (let ([s (if numeric-kw #f (symbolic-integral expr var))])
-    (when (and symbolic-kw (not s)) (error "#:symbolic was specified but unable to find symbolic integral"))
-    (if symbolic-integral (values #t s #f) (values #f (null) dt))))
-                                            
+  (let* ([v (if var var default-variable-of-integration)]
+         [d (if dt dt default-dt)]
+         [s (if numeric-kw #f (symbolic-integral expr v))])
+    (cond [(and symbolic-kw (not s))
+           (error "#:symbolic was specified but unable to find symbolic integral")])
+    (if s (values #t s #f) (values #f (null) d))))
+
 ; Function to do symbolic integration at compile time -- super simple to start with.
 ; This doesn't do any simplification of the result -- which seems fine, since it is for evaluation
 ; rather than human consumption, and the code is going to be really fast with or without simplication.

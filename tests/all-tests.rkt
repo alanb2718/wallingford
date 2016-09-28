@@ -17,6 +17,7 @@
  "max-min-tests.rkt"
  "integral-preprocessor-tests.rkt"
  "integral-symbolic-tests.rkt"
+ "integral-numeric-tests.rkt"
  "integral-bad-arg-tests.rkt"
  "integrals-and-events.rkt"
  "viewer-tests.rkt"

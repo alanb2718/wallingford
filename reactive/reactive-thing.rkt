@@ -93,12 +93,14 @@
 
 ; integral macro
 ; The form is (integral expr) with additional optional keyword arguments as follows:
-;     #:var v  -- variable of integration; default is (milliseconds) -- note that an expression is allowed here
+;     #:var v  -- variable of integration (note that an expression is allowed here)
 ;     #:numeric or #:symbolic -- which kind of integration to use.  Can provide at most one of these, or omit.
 ;         The default is to try symbolic, and if that doesn't work, use numeric.  However, if #:symbolic is listed
 ;         explicitly, then either symbolic integration must succeed or the system raises an exception.
 ;     #:dt d -- time step (only allowed with #:numeric)
 ; Example: (integral (sin x) #:var x #:numeric #:dt 0.1)
+; A Racket macro ninja would check the restrictions in the macro itself, but here the integral-preprocessor function checks them.
+; The integral-preprocessor function includes definitions of the default values for #:var and #:dt
 (require (for-syntax "integral-preprocessor.rkt"))
 (require (for-syntax syntax/parse))
 (define-syntax (integral stx)
@@ -109,7 +111,7 @@
                            (~optional (~seq #:dt dt:expr))) ...)
      (let-values ([(symbolic? symbolic-integral dt)
                    (integral-preprocessor (syntax->datum #'e)
-                                          (if (attribute v) (syntax->datum #'v) '(milliseconds))
+                                          (if (attribute v) (syntax->datum #'v) #f)
                                           (attribute numeric-kw)
                                           (attribute symbolic-kw)
                                           (if (attribute dt) (syntax->datum #'dt) #f))])
@@ -177,15 +179,15 @@
     (struct nstruct (dt last-time last-value sum) #:transparent)
     (define/public (integral-numeric-run-time-fn f id interesting dt)
       (let* ([t (send this milliseconds-evaluated)]
-             [cur-value (f)]
+             [f-value (f)]
              [new-sum (if (hash-has-key? accumulator-values id)
                           (let* ([old-struct (hash-ref accumulator-values id)]
-                                 [delta-sum (* 0.5 (+ (nstruct-last-value old-struct) cur-value) dt)])
+                                 [delta-sum (* 0.5 (+ (nstruct-last-value old-struct) f-value) dt)])
                             (+ (nstruct-sum old-struct) delta-sum))
                           0)])
         (if (eq? interesting 'last)
             (hash-remove! accumulator-values id)
-            (hash-set! accumulator-values id (nstruct dt t cur-value new-sum)))
+            (hash-set! accumulator-values id (nstruct dt t f-value new-sum)))
         new-sum))
     
     (define/override (milliseconds)
