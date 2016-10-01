@@ -1,5 +1,7 @@
 #lang s-exp rosette
 ;; unit tests for integral using a numeric solution
+;; These are like integral-symbolic-tests, except for the first one (integral-in-always), which has some additional time advances
+;; to exercise that part of the code.
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
@@ -22,18 +24,18 @@
        (super-new)
        (define-public-symbolic* x y real?)
        (always (equal? x (integral 2 #:numeric)))
-      ; (always (equal? y (integral (milliseconds) #:numeric)))
+       (always (equal? y (integral (milliseconds) #:numeric)))
        ))
    (define r (new tester%))
    (send r start)
-   (send-syncd r advance-time-syncd 10)
-   (check equal? (send-syncd r milliseconds-syncd) 10)
-   (check equal? (send r get-x) 20)
-  ; (check equal? (send r get-y) 50)
+   (send-syncd r advance-time-syncd 4)
+   (check equal? (send-syncd r milliseconds-syncd) 4)
+   (check equal? (send r get-x) 8)
+   (check equal? (send r get-y) 8)
    (send-syncd r advance-time-syncd 50)
    (check equal? (send-syncd r milliseconds-syncd) 50)
    (check equal? (send r get-x) 100)
-  ; (check equal? (send r get-y) 1250)
+   (check equal? (send r get-y) 1250)
    ))
 
 (define (integral-in-simple-while-hit-start)
@@ -47,20 +49,26 @@
        (assert (equal? x 0))
        (send this solve)
        (stay x)
-       (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
-              (assert (equal? x (integral 2))))))
+       (while (and (>= (milliseconds) 50) (<= (milliseconds) 110))
+              (assert (equal? x (integral 2 #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)
    (check equal? (send r get-x) 0) ; outside of while at this time, so x should have its initial value
-   (send-syncd r advance-time-syncd 10)  ; while should now be active (but just starting)
+   (send-syncd r advance-time-syncd 34)
+   (check equal? (send r get-x) 0) ; still outside of while
+   (send-syncd r advance-time-syncd 42)
+   (check equal? (send r get-x) 0) ; still outside of while
+   (send-syncd r advance-time-syncd 50)  ; while should now be active (but just starting)
    (check equal? (send r get-x) 0)
    (send-syncd r advance-time-syncd 60)  ; while still active
-   (check equal? (send r get-x) 100)
+   (check equal? (send r get-x) 20)
    (send-syncd r advance-time-syncd 75)
-   (check equal? (send r get-x) 130)
-   (send-syncd r advance-time-syncd 200) ; while becomes inactive at 100
-   (check equal? (send r get-x) 180)))
+   (check equal? (send r get-x) 50)
+   (send-syncd r advance-time-syncd 200) ; while becomes inactive at 110
+   (check equal? (send r get-x) 120)
+   (send-syncd r advance-time-syncd 350)
+   (check equal? (send r get-x) 120)))
 
 (define (integral-in-simple-while-miss-start)
   (test-case
@@ -74,7 +82,7 @@
        (send this solve)
        (stay x)
        (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
-              (assert (equal? x (integral 2))))))
+              (assert (equal? x (integral 2 #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)
@@ -103,7 +111,7 @@
                                    (cond [(zero? r) 'first]
                                          [(equal? r 10) 'last]
                                          [else #f]))
-              (assert (equal? x (integral 2))))))
+              (assert (equal? x (integral 2  #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)
@@ -128,18 +136,19 @@
        (super-new)
        (define-public-symbolic* s x1 x2 y1 y2 z1 z2 real?)
        (always (equal? s (* 2 (milliseconds))))
-       (always (equal? x1 (integral 2 #:var (milliseconds))))
-       (always (equal? x2 (integral (milliseconds) #:var (milliseconds))))
-       (always (equal? y1 (integral 2 #:var (seconds))))
-       (always (equal? y2 (integral (seconds) #:var (seconds))))
-       (always (equal? z1 (integral 2 #:var s)))
-       (always (equal? z2 (integral s #:var s)))))
+       (always (equal? x1 (integral 2 #:var (milliseconds) #:numeric)))
+       (always (equal? x2 (integral (milliseconds) #:var (milliseconds) #:numeric)))
+       (always (equal? y1 (integral 2 #:var (seconds) #:numeric)))
+       (always (equal? y2 (integral (seconds) #:var (seconds) #:numeric)))
+       (always (equal? z1 (integral 2 #:var s #:numeric)))
+       (always (equal? z2 (integral s #:var s #:numeric)))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 100)
    (check equal? (send-syncd r milliseconds-syncd) 100)
    (check equal? (send r get-x1) 200)
    (check equal? (send r get-x2) 5000)
+   (printf "y1 ~a \n" (send r get-y1))
    (check-true (approx-equal? (send r get-y1) 0.2))
    ; or this version works too, but not an exact test with 0.2
    ; (check equal? (send r get-y1) 1/5)
@@ -152,10 +161,10 @@
   (test-suite+
    "unit tests for integral using a numeric solution"
    (integral-in-always)
-;   (integral-in-simple-while-hit-start)
-;   (integral-in-simple-while-miss-start)
-;   (integral-in-repeating-while)
-;   (integral-with-explict-variable-of-integration)
+   (integral-in-simple-while-hit-start)
+   (integral-in-simple-while-miss-start)
+   (integral-in-repeating-while)
+  ; (integral-with-explict-variable-of-integration)
    ))
 
 (time (run-tests integral-numeric-tests))

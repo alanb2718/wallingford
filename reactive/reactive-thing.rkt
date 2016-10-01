@@ -176,14 +176,18 @@
     ; Version of runtime integral method for use with code for numeric integration.  Calling this method should return the current
     ; value of (integral expr) plus do some bookkeeping.
     ; For numeric integration, while the integral is active, accumulator-values holds instances of nstruct.
-    (struct nstruct (dt last-time last-value sum) #:transparent)
+    (struct nstruct (dt     ; the delta time for the *next* time advance
+                     time   ; the time this instantiation of the integral expression was evaluated
+                     value  ; the value of expr at this time
+                     sum    ; the cumulative sum of the values so far (i.e., the integral so far)
+                     ) #:transparent)
     (define/public (integral-numeric-run-time-fn f id interesting dt)
       (let* ([t (send this milliseconds-evaluated)]
-             [f-value (f)]
+             [f-value (f)]  ; value of expr at time t
              [new-sum (if (hash-has-key? accumulator-values id)
-                          (let* ([old-struct (hash-ref accumulator-values id)]
-                                 [delta-sum (* 0.5 (+ (nstruct-last-value old-struct) f-value) dt)])
-                            (+ (nstruct-sum old-struct) delta-sum))
+                          (let* ([oldstruct (hash-ref accumulator-values id)]
+                                 [delta-sum (* 0.5 (+ (nstruct-value oldstruct) f-value) (- t (nstruct-time oldstruct)))])
+                            (+ (nstruct-sum oldstruct) delta-sum))
                           0)])
         (if (eq? interesting 'last)
             (hash-remove! accumulator-values id)
@@ -232,33 +236,40 @@
     ; 'when' condition true or is an interesting time for a 'while'.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
-    (define/override (find-time mytime target)
-      ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
-      ; to which to advance.
-      (cond [(and (null? when-holders) (null? while-holders)) target]
-            [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
-                  (assert (> symbolic-time mytime))
-                  (assert (or (equal? symbolic-time target)
-                              (and (< symbolic-time target)
-                                   (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
-                                       (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
-                  ; add all required always constraints and stays to the solver
-                  (send this solver-add-required solver)
-                  (solver-assert solver (asserts))
-                  (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
-                  (define sol (solver-check solver))
-                  (define min-time (evaluate symbolic-time sol))
-                  ; make sure that this is indeed a minimum (not an infinitesimal)
-                  ; trying to advance time by an infinitesimal amount could loop forever
-                  (solver-assert solver (list (< symbolic-time min-time)))
-                  (unless (unsat? (solver-check solver))
-                    (error 'find-time "can only advance time by an infinitesimal amount"))
-                  (clear-asserts!)
-                  (solver-clear solver)
-                  ; make sure we aren't stuck
-                  (racket-when (equal? mytime min-time)
-                               (error 'find-time "unable to find a time to advance to that is greater than the current time"))
-                  min-time]))
+    (define/override (find-time mytime initial-target)
+      ; If there are active numeric integral expressions, find the smallest dt (delta time) of them.  The target
+      ; time will then be the minimum of the initial-target (supplied as an argument to this method) and the
+      ; current time plus the minimum dt.  If no active numeric constraints, the target is just initial-target.
+      (let* ([actives (filter nstruct? (hash-values accumulator-values))]
+             [target (if (null? actives)
+                         initial-target
+                         (min initial-target (+ mytime (apply min (map nstruct-dt actives)))))])
+        ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
+        ; to which to advance.
+        (cond [(and (null? when-holders) (null? while-holders)) target]
+              [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
+                    (assert (> symbolic-time mytime))
+                    (assert (or (equal? symbolic-time target)
+                                (and (< symbolic-time target)
+                                     (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
+                                         (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
+                    ; add all required always constraints and stays to the solver
+                    (send this solver-add-required solver)
+                    (solver-assert solver (asserts))
+                    (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
+                    (define sol (solver-check solver))
+                    (define min-time (evaluate symbolic-time sol))
+                    ; make sure that this is indeed a minimum (not an infinitesimal)
+                    ; trying to advance time by an infinitesimal amount could loop forever
+                    (solver-assert solver (list (< symbolic-time min-time)))
+                    (unless (unsat? (solver-check solver))
+                      (error 'find-time "can only advance time by an infinitesimal amount"))
+                    (clear-asserts!)
+                    (solver-clear solver)
+                    ; make sure we aren't stuck
+                    (racket-when (equal? mytime min-time)
+                                 (error 'find-time "unable to find a time to advance to that is greater than the current time"))
+                    min-time])))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or is an
     ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.

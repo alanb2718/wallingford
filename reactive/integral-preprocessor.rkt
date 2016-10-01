@@ -29,7 +29,7 @@
          [s (if numeric-kw #f (symbolic-integral expr v))])
     (cond [(and symbolic-kw (not s))
            (error "#:symbolic was specified but unable to find symbolic integral")])
-    (if s (values #t s #f) (values #f (null) d))))
+    (if s (values #t s #f) (values #f null d))))
 
 ; Function to do symbolic integration at compile time -- super simple to start with.
 ; This doesn't do any simplification of the result -- which seems fine, since it is for evaluation
