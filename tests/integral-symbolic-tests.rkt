@@ -24,7 +24,7 @@
        (inherit milliseconds)
        (super-new)
        (define-public-symbolic* x y real?)
-       (always (equal? x (integral 2 #:symbolic)))  ; do one that explicitly insists that this be symbolic
+       (always (equal? x (integral 2 #:symbolic)))  ; call to integral that explicitly insists that it be symbolic
        (always (equal? y (integral (milliseconds))))))
    (define r (new tester%))
    (send r start)

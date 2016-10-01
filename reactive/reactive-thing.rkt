@@ -109,7 +109,7 @@
                            (~optional (~seq (~and #:numeric numeric-kw)))
                            (~optional (~seq (~and #:symbolic symbolic-kw)))
                            (~optional (~seq #:dt dt:expr))) ...)
-     (let-values ([(symbolic? symbolic-integral dt)
+     (let-values ([(symbolic? var symbolic-integral dt)
                    (integral-preprocessor (syntax->datum #'e)
                                           (if (attribute v) (syntax->datum #'v) #f)
                                           (attribute numeric-kw)
@@ -119,9 +119,11 @@
            (with-syntax ([s (datum->syntax stx symbolic-integral)]  ; symbolic version
                          [id (datum->syntax stx (gensym))])
              #'(send this integral-symbolic-run-time-fn (lambda () (send this wally-evaluate s)) 'id (interesting-time?)))
-           (with-syntax ([d (datum->syntax stx dt)]
+           (with-syntax ([v (datum->syntax stx var)]
+                         [d (datum->syntax stx dt)]
                          [id (datum->syntax stx (gensym))])  ; numeric version
-             #'(send this integral-numeric-run-time-fn (lambda () (send this wally-evaluate e)) 'id (interesting-time?) d))))]))
+             #'(send this integral-numeric-run-time-fn (lambda () (send this wally-evaluate v))
+                     (lambda () (send this wally-evaluate e)) 'id (interesting-time?) d))))]))
 
 
 (define reactive-thing%
@@ -176,22 +178,26 @@
     ; Version of runtime integral method for use with code for numeric integration.  Calling this method should return the current
     ; value of (integral expr) plus do some bookkeeping.
     ; For numeric integration, while the integral is active, accumulator-values holds instances of nstruct.
-    (struct nstruct (dt     ; the delta time for the *next* time advance
-                     time   ; the time this instantiation of the integral expression was evaluated
-                     value  ; the value of expr at this time
-                     sum    ; the cumulative sum of the values so far (i.e., the integral so far)
+    (struct nstruct (dt         ; the delta time for the *next* time advance
+                     var-value  ; the value of the variable of integration when the integral expression was evaluated
+                     expr-value ; the value of expr at that same time time
+                     sum        ; the cumulative sum of the values so far (i.e., the integral so far)
                      ) #:transparent)
-    (define/public (integral-numeric-run-time-fn f id interesting dt)
-      (let* ([t (send this milliseconds-evaluated)]
-             [f-value (f)]  ; value of expr at time t
-             [new-sum (if (hash-has-key? accumulator-values id)
+    (define/public (integral-numeric-run-time-fn var-fn expr-fn id interesting dt)
+      (let* ([new-var-value (send this wally-evaluate (var-fn))]
+             [new-expr-value (send this wally-evaluate (expr-fn))]
+             ; See if there is already a saved value for this id, if so use it.  Hack (similar to symbolic evaluation hack):
+             ; If time=0, ignore the old value, so that instead we *replace* it if present, to get around the bug where the
+             ; integral expression is being evaluated on startup before all variables have values.
+             [new-sum (if (and (hash-has-key? accumulator-values id) (> (send this milliseconds-evaluated) 0))
                           (let* ([oldstruct (hash-ref accumulator-values id)]
-                                 [delta-sum (* 0.5 (+ (nstruct-value oldstruct) f-value) (- t (nstruct-time oldstruct)))])
+                                 [delta-sum (* 0.5 (+ new-expr-value (nstruct-expr-value oldstruct))
+                                               (- new-var-value (nstruct-var-value oldstruct)))])
                             (+ (nstruct-sum oldstruct) delta-sum))
                           0)])
         (if (eq? interesting 'last)
             (hash-remove! accumulator-values id)
-            (hash-set! accumulator-values id (nstruct dt t f-value new-sum)))
+            (hash-set! accumulator-values id (nstruct dt new-var-value new-expr-value new-sum)))
         new-sum))
     
     (define/override (milliseconds)

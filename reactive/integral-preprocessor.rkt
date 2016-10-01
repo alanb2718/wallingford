@@ -16,8 +16,9 @@
 ; here this function checks it.  If neither the code first tries to find a symbolic integral, and if that doesn't
 ; work, it returns code to compute it numerically.  #:dt can only be provided if #:numeric is specified.  Again,
 ; a macro ninja would check this in the macro rather than here.
-; It returns 3 values:
+; It returns 4 values:
 ;   symbolic?  #t if the result is a symbolic integration, #f if numeric
+;   var        the variable of integration (the supplied one if present, otherwise the default var of integration)
 ;   expr       if symbolic is #t, the symbolic integral; and otherwise null
 ;   dt         if symbolic is #f, the time step for numeric integration; and otherwise null
 (define (integral-preprocessor expr var numeric-kw symbolic-kw dt)
@@ -29,12 +30,11 @@
          [s (if numeric-kw #f (symbolic-integral expr v))])
     (cond [(and symbolic-kw (not s))
            (error "#:symbolic was specified but unable to find symbolic integral")])
-    (if s (values #t s #f) (values #f null d))))
+    (if s (values #t v s #f) (values #f v null d))))
 
 ; Function to do symbolic integration at compile time -- super simple to start with.
 ; This doesn't do any simplification of the result -- which seems fine, since it is for evaluation
 ; rather than human consumption, and the code is going to be really fast with or without simplication.
-; It is small, but putting it in a separate module makes it easier to test independently.
 (define (symbolic-integral expr var)
   (match expr
     [v #:when (equal? v var) (list '* 0.5 (list 'expt var 2))]
