@@ -41,7 +41,7 @@
                 (define-public-symbolic* vs ... type)))]))
 
 ; all times are relative to the time the program is started
-(define time-at-startup (current-milliseconds))
+(define time-at-startup (current-inexact-milliseconds))
 
 ; struct to hold information for a mouse or button event
 (struct mouse-event (time pt button-state) #:transparent)
@@ -205,7 +205,7 @@
     
     ; Methods to access time
     (define/public-final (current-clock-time)
-      (- (current-milliseconds) time-at-startup))
+      (- (current-inexact-milliseconds) time-at-startup))
     ; Other time access methods.  These other methods don't directly use the thing's thread -- instead they
     ; are intended to always be called from code the thread is running
     ; The (seconds) method returns the current time in seconds as a float.  This is evaluated (mostly so
@@ -218,7 +218,7 @@
     (define/public (milliseconds-evaluated)
       (send this milliseconds))
     (define/public (seconds)
-      (exact->inexact (/ (send this milliseconds-evaluated) 1000.0)))
+      (/ (send this milliseconds-evaluated) 1000.0))
     
     ; Accessing the thing's image.  concrete-image should be overridden if the image needs to be evaluated before drawing it
     (define/public (image) myimage)
