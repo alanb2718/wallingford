@@ -240,7 +240,6 @@
    (check equal? (send r get-y) 120)
    (check equal? (send r get-z) 200)
    (check equal? (send r get-times) (list->mutable-set '(0.0 7.0 14.0 21.0 28.0 35.0 40.0)))
-   (printf "times ~a \n" (send r get-times))
    ))
 
 (define integral-numeric-tests 
