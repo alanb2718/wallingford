@@ -10,10 +10,10 @@
 
 (provide integral-numeric-tests)
 
-; helper function to test for approximate equality
+; helper function to test for approximate equality (pretty coarse for integration tests)
 (define (approx-equal? x y)
   (or (and (zero? x) (zero? y))
-      (< (abs (- x y)) 1e-5)))
+      (< (abs (- x y)) 0.01)))
 
 (define (integral-in-always)
   (test-case
@@ -157,27 +157,91 @@
    (check equal? (send r get-z1) 400)
    (check equal? (send r get-z2) 20000)))
 
-(define (integral-nonlinear)
+(define (integral-sin-milliseconds)
   (test-case
-   "test call to integral with a nonlinear expression"
+   "test call to integral with a nonlinear expression: (sin (milliseconds-evaluated))"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds milliseconds-evaluated)
+       (super-new)
+       (define-public-symbolic* x real?)
+       (always (equal? x (integral (sin (milliseconds-evaluated)) #:numeric #:dt 0.1)))
+       ))
+   (define r (new tester%))
+   (send r start)
+   (send-syncd r advance-time-syncd 0.6)
+   (check approx-equal? (send-syncd r milliseconds-syncd) 0.6)
+   ; (- (- (cos 0.6)) (- (cos 0.0))) is the symbolic solution
+   (check approx-equal? (send r get-x) (- (- (cos 0.6)) (- (cos 0.0))))
+   (send-syncd r advance-time-syncd 3.0)
+   (check equal? (send-syncd r milliseconds-syncd) 3.0)
+   (check approx-equal? (send r get-x) (- (- (cos 3.0)) (- (cos 0.0))))
+   ))
+
+(define (integral-sin-milliseconds-one-thousandth)
+  (test-case
+   "test call to integral with another nonlinear expression: (sin (* 0.001 (milliseconds-evaluated)))"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds milliseconds-evaluated)
+       (super-new)
+       (define-public-symbolic* x real?)
+       (always (equal? x (integral (sin (* 0.001 (milliseconds-evaluated))))))
+       ))
+   (define r (new tester%))
+   (send r start)
+   (send-syncd r advance-time-syncd 500)
+   (check approx-equal? (send-syncd r milliseconds-syncd) 500)
+   (check approx-equal? (send r get-x) (- 1000.0 (* 1000.0 (cos 0.5))))
+   (send-syncd r advance-time-syncd 1000)
+   (check approx-equal? (send r get-x) (- 1000.0 (* 1000.0 (cos 1.0))))
+   ))
+
+(define (integral-sin-seconds)
+  (test-case
+   "test call to integral with another nonlinear expression: (sin (seconds))"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds seconds)
        (super-new)
        (define-public-symbolic* x real?)
-       ; note that (seconds) is evaluated, in contrast to (milliseconds) ... not totally consistent but it lets it work with sin
-       (always (equal? x (integral (sin (seconds)))))
+       (always (equal? x (integral (sin (seconds)) #:var (seconds))))
        ))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 500)
-   (check equal? (send-syncd r milliseconds-syncd) 500)
-   (check equal? (send r get-x) 8)
-   (send-syncd r advance-time-syncd 1000)
-   (check equal? (send-syncd r milliseconds-syncd) 1000)
-   (check equal? (send r get-x) 100)
+   (check approx-equal? (send-syncd r milliseconds-syncd) 500)
+   (check approx-equal? (send r get-x) (- (- (cos 0.5)) (- (cos 0.0))))
+   (send-syncd r advance-time-syncd 1200)
+   (check equal? (send-syncd r milliseconds-syncd) 1200)
+   (check approx-equal? (send r get-x) (- (- (cos 1.2)) (- (cos 0.0))))
    ))
 
+(define (integral-multiple-dts)
+  (test-case
+   "test call to integrals with multiple values for dt"
+   ; this test uses a hack (side effect in the integral expression) to make sure we hit the correct times
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds milliseconds-evaluated)
+       (super-new)
+       (define-public-symbolic* x y z real?)
+       (define times (mutable-set))
+       (define/public (get-times) times)
+       (always (equal? x (integral (begin (set-add! times (milliseconds-evaluated)) 2) #:numeric #:dt 7)))
+       (always (equal? y (integral (begin (set-add! times (milliseconds-evaluated)) 3) #:numeric #:dt 13)))
+       (always (equal? z (integral (begin (set-add! times (milliseconds-evaluated)) 5) #:numeric)))  ; uses default of 10
+       ))
+   (define r (new tester%))
+   (send r start)
+   (send-syncd r advance-time-syncd 40)
+   (check equal? (send-syncd r milliseconds-syncd) 40)
+   (check equal? (send r get-x) 80)
+   (check equal? (send r get-y) 120)
+   (check equal? (send r get-z) 200)
+   (check equal? (send r get-times) (list->mutable-set '(0.0 7.0 14.0 21.0 28.0 35.0 40.0)))
+   (printf "times ~a \n" (send r get-times))
+   ))
 
 (define integral-numeric-tests 
   (test-suite+
@@ -187,7 +251,10 @@
    (integral-in-simple-while-miss-start)
    (integral-in-repeating-while)
    (integral-with-explict-variable-of-integration)
-   ; (integral-nonlinear)
+   (integral-sin-milliseconds)
+   (integral-sin-milliseconds-one-thousandth)
+   ; (integral-sin-seconds)  temporarily disabled due to Rosette bug
+   (integral-multiple-dts)
    ))
 
 (time (run-tests integral-numeric-tests))
