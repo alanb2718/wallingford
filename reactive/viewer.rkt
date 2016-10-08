@@ -16,7 +16,7 @@
     (define my-time-display time-display)
     (define my-fps-display fps-display)
     (define my-sleep-time sleep-time)
-    (define last-frame-time (current-inexact-milliseconds))
+    (define last-frame-time (current-milliseconds))
     (super-new)
     
     (define/override (match-thread-receive r)
@@ -43,9 +43,9 @@
       (cond [running
              (send-thing my-thing show my-dc)
              (send my-time-display set-label (seconds->string (send my-thing seconds)))
-             (let ([dt (- (current-inexact-milliseconds) last-frame-time)])
+             (let ([dt (- (current-milliseconds) last-frame-time)])
                (send my-fps-display set-label (string-append "FPS: " (~r (/ 1000 dt) #:precision 0)))
-               (set! last-frame-time (current-inexact-milliseconds)))]
+               (set! last-frame-time (current-milliseconds)))]
             [else
              (send my-dc clear)
              (send my-time-display set-label " ")
