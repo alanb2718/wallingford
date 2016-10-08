@@ -139,8 +139,7 @@
        (always (equal? x1 (integral 2 #:var (milliseconds) #:numeric)))
        (always (equal? x2 (integral (milliseconds) #:var (milliseconds) #:numeric)))
        (always (equal? y1 (integral 2 #:var (seconds) #:numeric)))
-       ; this constraint temporarily disabled - seems to tickle a Rosette bug
-       ; (always (equal? y2 (integral (seconds) #:var (seconds) #:numeric)))
+       (always (equal? y2 (integral (seconds) #:var (seconds) #:numeric)))
        (always (equal? z1 (integral 2 #:var s #:numeric)))
        (always (equal? z2 (integral s #:var s #:numeric)))))
    (define r (new tester%))
@@ -150,10 +149,9 @@
    (check equal? (send r get-x1) 200)
    (check equal? (send r get-x2) 5000)
    (check-true (approx-equal? (send r get-y1) 0.2))
-   ; or this version works too, but not an exact test with 0.2
+   ; or this version works too, but not an equal? test with 0.2 (since y1 will be an exact number rather than a float)
    ; (check equal? (send r get-y1) 1/5)
-   ; this test disabled while the above constraint on y2 is disabled
-   ; (check-true (approx-equal? (send r get-y2) 0.005))
+   (check-true (approx-equal? (send r get-y2) 0.005))
    (check equal? (send r get-z1) 400)
    (check equal? (send r get-z2) 20000)))
 
@@ -220,7 +218,7 @@
 (define (integral-multiple-dts)
   (test-case
    "test call to integrals with multiple values for dt"
-   ; this test uses a hack (side effect in the integral expression) to make sure we hit the correct times
+   ; this test uses a hack (side effect in the integral expression) to test that we advance to the correct times
    (define tester%
      (class reactive-thing%
        (inherit milliseconds milliseconds-evaluated)
@@ -252,7 +250,7 @@
    (integral-with-explict-variable-of-integration)
    (integral-sin-milliseconds)
    (integral-sin-milliseconds-one-thousandth)
-   ; (integral-sin-seconds)  temporarily disabled due to Rosette bug
+   (integral-sin-seconds)
    (integral-multiple-dts)
    ))
 
