@@ -218,7 +218,7 @@
     (define/public (milliseconds-evaluated)
       (send this milliseconds))
     (define/public (seconds)
-      (/ (send this milliseconds-evaluated) 1000.0))
+      (/ (send this milliseconds-evaluated) 1000))
     
     ; Accessing the thing's image.  concrete-image should be overridden if the image needs to be evaluated before drawing it
     (define/public (image) myimage)
@@ -301,7 +301,7 @@
         ; sets another alert
         (set! alert (thread (lambda ()
                               ; seconds-to-sleep might be negative, if clock time advanced beyond the target already
-                              (cond [(> seconds-to-sleep 0.0) (sleep seconds-to-sleep)])
+                              (cond [(> seconds-to-sleep 0) (sleep seconds-to-sleep)])
                               ; we might already have gone by the target -- that's ok, since advance-time-syncd
                               ; won't do anything in that case
                               (send-syncd this advance-time-syncd target)

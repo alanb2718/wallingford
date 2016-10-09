@@ -98,7 +98,7 @@
 ;         The default is to try symbolic, and if that doesn't work, use numeric.  However, if #:symbolic is listed
 ;         explicitly, then either symbolic integration must succeed or the system raises an exception.
 ;     #:dt d -- time step (only allowed with #:numeric)
-; Example: (integral (sin x) #:var x #:numeric #:dt 0.1)
+; Example: (integral (sin x) #:var x #:numeric #:dt 1)
 ; A Racket macro ninja would check the restrictions in the macro itself, but here the integral-preprocessor function checks them.
 ; The integral-preprocessor function includes definitions of the default values for #:var and #:dt
 (require (for-syntax "integral-preprocessor.rkt"))
@@ -173,7 +173,7 @@
       ; to get around a bug where the integral expression is being evaluated on startup before all variables have values.
       (cond [(or (not (hash-has-key? accumulator-values id)) (eq? interesting 'first) (equal? (send this milliseconds-evaluated) 0))
              (hash-set! accumulator-values id (f))
-             0.0]
+             0]
             [else (- (f) (hash-ref accumulator-values id))]))
     ; Version of runtime integral method for use with code for numeric integration.  Calling this method should return the current
     ; value of (integral expr) plus do some bookkeeping.
@@ -191,7 +191,7 @@
              ; integral expression is being evaluated on startup before all variables have values.
              [new-sum (if (and (hash-has-key? accumulator-values id) (> (send this milliseconds-evaluated) 0))
                           (let* ([oldstruct (hash-ref accumulator-values id)]
-                                 [delta-sum (* 0.5 (+ new-expr-value (nstruct-expr-value oldstruct))
+                                 [delta-sum (* 1/2 (+ new-expr-value (nstruct-expr-value oldstruct))
                                                (- new-var-value (nstruct-var-value oldstruct)))])
                             (+ (nstruct-sum oldstruct) delta-sum))
                           0)])
