@@ -4,127 +4,11 @@
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "abstract-reactive-thing.rkt")
+(require "reactive-macros.rkt")
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
 
 (provide when while racket-when max-value min-value integral reactive-thing% interesting-time?)
-
-; Definition of 'when' and 'while' macros.  These should be used within an instance of reactive-thing
-; or a subclass since they reference 'this'.
-;
-; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
-(define-syntax-rule (when test e ...)
-  (send this add-when-holder (when-holder (lambda () test) (lambda () e ...))))
-; 'while' macro.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
-; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
-; 'while' that will affect future state.  There are currently two simple cases for which the system can synthesize
-; #:interesting-time, namely checking for button-pressed? and checking for milliseconds within a given range (with a
-; rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
-(define-syntax while
-  (syntax-rules (and <= >= button-pressed? milliseconds)
-    ((while condition #:interesting-time interesting e ...)
-     (add-while condition interesting e ...))
-    ((while (button-pressed?) e ...)
-     (add-while (send this button-pressed?)
-                (cond [(send this button-going-down?) 'first]
-                      [(send this button-going-up?) 'last]
-                      [else #f])
-                e ...))
-    ; The versions that check if milliseconds is within a given range assume a test like this:
-    ;   (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100)) ...
-    ; or this:
-    ;   (while (and (<= 50 (milliseconds)) (>= 100 (milliseconds))) ...
-    ; plus the analogous versions for the lower bound test, so 4 possible combinations in all.
-    ; NOTE: this should be rewritten in better style -- see e.g. the integral macro, which uses syntax-parse
-    ((while (and (<= lower (milliseconds)) (<= (milliseconds) upper)) e ...)
-     (add-while-with-time-bounds lower upper e ...))
-    ((while (and (<= lower (milliseconds)) (>= upper (milliseconds))) e ...)
-     (add-while-with-time-bounds lower upper e ...))
-    ((while (and (>= (milliseconds) lower) (<= (milliseconds) upper)) e ...)
-     (add-while-with-time-bounds lower upper e ...))
-    ((while (and (>= (milliseconds) lower) (>= upper (milliseconds))) e ...)
-     (add-while-with-time-bounds lower upper e ...))
-    ((while test e ...)
-     (error 'while "unable to automatically synthesize #:interesting-time function"))))
-; add-while and add-while-with-time-bounds are helper macros (just for internal use)
-; if the body of the while has temporal constraints then we need to use pull sampling
-(define-syntax-rule (add-while condition interesting e ...)
-  (send this add-while-holder (while-holder (if (pull-sampling? '(e ...)) (gensym) #f)
-                                            (lambda () condition)
-                                            (lambda () interesting)
-                                            (lambda () e ...))))
-(define-syntax-rule (add-while-with-time-bounds lower upper e ...)
-  (add-while (and (<= lower (send this milliseconds)) (<= (send this milliseconds) upper))
-             (cond [(equal? lower (send this milliseconds)) 'first]
-                   [(equal? upper (send this milliseconds)) 'last]
-                   [else #f])
-             e ...))
-; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
-(struct when-holder (condition body) #:transparent)
-; for while-holder, pull-id is either a unique symbol (if pull sampling should be used while this 'while' is active, or #f if not
-(struct while-holder (pull-id condition interesting body) #:transparent)
-; Helper functions for get-sampling and adding while constraints.
-(define (pull-sampling? code)
-  (includes-one-of code '((seconds) (milliseconds) (mouse-position)
-                          (button-pressed?) (button-going-down?) (button-going-up?) (button-going-up-or-down?))))
-(define (includes-one-of code items)
-  ; items should be a list of temporal function calls. Return true if code is or contains one of the calls.
-  (cond [(member code items) #t]
-        [(pair? code) (or (includes-one-of (car code) items) (includes-one-of  (cdr code) items))]
-        [else #f]))
-; interesting-time? will be rebound when evaluating a while -- it will be the value of the interesting-time function
-; for that while at the current time.  It is used for accumulating operators such as max-value.
-(define interesting-time? (make-parameter #f))
-
-; max-value and min-value macros
-; temporary version hacked to have a symbol as an additional argument.  This is used to save the current max in a hash.
-;(define-syntax-rule (max-value expr id)
-;   (send this max-helper (lambda () (send this wally-evaluate expr)) id (interesting-time?)))
-; and here are the real versions, which use gensym
-(define-syntax-rule (max-value expr)
-  (max-or-min max expr))
-(define-syntax-rule (min-value expr)
-  (max-or-min min expr))
-(define-syntax (max-or-min stx)
-  (syntax-case stx ()
-    [(_ fn expr)
-     (with-syntax ([id (datum->syntax stx (gensym))])
-       #'(send this max-min-helper fn (lambda () (send this wally-evaluate expr)) 'id (interesting-time?)))]))
-
-; integral macro
-; The form is (integral expr) with additional optional keyword arguments as follows:
-;     #:var v  -- variable of integration (note that an expression is allowed here)
-;     #:numeric or #:symbolic -- which kind of integration to use.  Can provide at most one of these, or omit.
-;         The default is to try symbolic, and if that doesn't work, use numeric.  However, if #:symbolic is listed
-;         explicitly, then either symbolic integration must succeed or the system raises an exception.
-;     #:dt d -- time step (only allowed with #:numeric)
-; Example: (integral (sin x) #:var x #:numeric #:dt 1)
-; A Racket macro ninja would check the restrictions in the macro itself, but here the integral-preprocessor function checks them.
-; The integral-preprocessor function includes definitions of the default values for #:var and #:dt
-(require (for-syntax "integral-preprocessor.rkt"))
-(require (for-syntax syntax/parse))
-(define-syntax (integral stx)
-  (syntax-parse stx
-    [(integral e:expr (~or (~optional (~seq #:var v:expr))
-                           (~optional (~seq (~and #:numeric numeric-kw)))
-                           (~optional (~seq (~and #:symbolic symbolic-kw)))
-                           (~optional (~seq #:dt dt:expr))) ...)
-     (let-values ([(symbolic? var symbolic-integral dt)
-                   (integral-preprocessor (syntax->datum #'e)
-                                          (if (attribute v) (syntax->datum #'v) #f)
-                                          (attribute numeric-kw)
-                                          (attribute symbolic-kw)
-                                          (if (attribute dt) (syntax->datum #'dt) #f))])
-       (if symbolic? 
-           (with-syntax ([s (datum->syntax stx symbolic-integral)]  ; symbolic version
-                         [id (datum->syntax stx (gensym))])
-             #'(send this integral-symbolic-run-time-fn (lambda () (send this wally-evaluate s)) 'id (interesting-time?)))
-           (with-syntax ([v (datum->syntax stx var)]
-                         [d (datum->syntax stx dt)]
-                         [id (datum->syntax stx (gensym))])  ; numeric version
-             #'(send this integral-numeric-run-time-fn (lambda () (send this wally-evaluate v))
-                     (lambda () (send this wally-evaluate e)) 'id (interesting-time?) d))))]))
-
 
 (define reactive-thing%
   (class abstract-reactive-thing%
@@ -231,10 +115,11 @@
              ; get-sampling after the object is created so that this will be initialized properly.
              (for ([w while-holders])
                   (let ([why (send this wally-evaluate ((while-holder-interesting w)))]
-                        [id (while-holder-pull-id w)])
+                        [id (while-holder-id w)]
+                        [pull? (while-holder-pull? w)])
                     ; 'why' is why this time is interesting, or #f if it's not
-                    ; 'id' is the unique ID for this while if it should use pull sampling, or #f if not
-                    (cond [(and (eq? why 'first) id) (set-add! pull-sampling id)])))])
+                    ; 'id' is the unique ID for this while
+                    (cond [(and (eq? why 'first) pull?) (set-add! pull-sampling id)])))])
       ; Once we get here, the variables are initialized.  Return the kind of sampling to use.
       (append (if push-sampling '(push) '()) (if (set-empty? pull-sampling) '() '(pull))))
     
@@ -242,14 +127,20 @@
     ; 'when' condition true or is an interesting time for a 'while'.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
+    ; Additionally, if there are constraints that use delta time (active numeric integral constraints or when
+    ; constraints with the #:linearize option set), we can't advance by more than the smallest of the dt's --
+    ; adjust the target time accordingly.
     (define/override (find-time mytime initial-target)
-      ; If there are active numeric integral expressions, find the smallest dt (delta time) of them.  The target
-      ; time will then be the minimum of the initial-target (supplied as an argument to this method) and the
-      ; current time plus the minimum dt.  If no active numeric constraints, the target is just initial-target.
-      (let* ([actives (filter nstruct? (hash-values accumulator-values))]
-             [target (if (null? actives)
-                         initial-target
-                         (min initial-target (+ mytime (apply min (map nstruct-dt actives)))))])
+      ; For all active numeric integral expressions and when constraints with the #:linearize option set, find the
+      ; smallest new times for each as the sum of the current time plus its dt (delta time).  The target time will
+      ; then be the minimum of the initial-target (supplied as an argument to this method) and the possible new times
+      ; for each of the active numeric integral expressions and linearized when constraints.
+      (let* ([active-integrals (filter nstruct? (hash-values accumulator-values))]
+             [active-integral-times (map (lambda (n) (+ mytime (nstruct-dt n))) active-integrals)]
+             [not-linearized-whens (filter-not when-holder-linearize when-holders)]
+             [linearized-whens (filter when-holder-linearize when-holders)]
+             [linearized-when-times (map (lambda (n) (+ mytime (when-holder-dt n))) linearized-whens)]
+             [target (apply min (append (list initial-target) active-integral-times linearized-when-times))])
         ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
         ; to which to advance.
         (cond [(and (null? when-holders) (null? while-holders)) target]
@@ -257,7 +148,8 @@
                     (assert (> symbolic-time mytime))
                     (assert (or (equal? symbolic-time target)
                                 (and (< symbolic-time target)
-                                     (or (ormap (lambda (w) ((when-holder-condition w))) when-holders) ; is a when condition true?
+                                     (or (ormap (lambda (w) ((when-holder-condition w))) not-linearized-whens) ; is a when condition true?
+                                         ; add ormap on linearized-whens here
                                          (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
                     ; add all required always constraints and stays to the solver
                     (send this solver-add-required solver)
@@ -329,12 +221,12 @@
         ;   if present.
         (for ([w while-holders])
              (let ([why (send this wally-evaluate ((while-holder-interesting w)))]
-                   [id (while-holder-pull-id w)])
+                   [id (while-holder-id w)]
+                   [pull? (while-holder-pull? w)])
                ; 'why' is why this time is interesting, or #f if it's not
-               ; 'id' is the unique ID for this while if it should use pull sampling, or #f if not
                (cond [why (set! notify-changed #t)])
-               (cond [(and (eq? why 'first) id) (set-add! pull-sampling id)]
-                     [(and (eq? why 'last) id) (set-remove! pull-sampling id)])))
+               (cond [(and (eq? why 'first) pull?) (set-add! pull-sampling id)]
+                     [(and (eq? why 'last) pull?) (set-remove! pull-sampling id)])))
         ; notify watchers if the sampling regime has changed (and remember it in current-sampling)
         (let ([new-sampling (send this get-sampling)])
           (cond [(not (equal? new-sampling current-sampling))

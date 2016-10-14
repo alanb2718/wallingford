@@ -20,6 +20,7 @@
  "integral-numeric-tests.rkt"
  "integral-bad-arg-tests.rkt"
  "integrals-and-events.rkt"
+ "complex-events.rkt"
  "viewer-tests.rkt"
  "compiled-reactive-thing-tests.rkt"
  "compiled-when-tests.rkt"

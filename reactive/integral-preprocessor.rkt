@@ -1,10 +1,7 @@
 #lang s-exp rosette
 
+(require "reactive-constants.rkt")
 (provide integral-preprocessor symbolic-integral)
-
-; default values for variable of integration and dt (for numeric integration only)
-(define default-variable-of-integration '(milliseconds))
-(define default-dt 10)
 
 ; The integral-preprocessor function takes the expression being integrated, e.g. (integral expr)
 ; plus additional arguments, representing keyword arguments in the source.
