@@ -15,8 +15,7 @@
     (super-new)
     (define when-holders '())  ; list of whens
     (define while-holders '())
-    ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to
-    ; time-at-startup.
+    ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to time-at-startup.
     (define-symbolic* symbolic-time real?)
     ; start time out at 0 (perhaps redundantly, this thing should also get an initialize message after all the constraints are added)
     ; not sure whether we need to do both, but this way means the stay is ok
@@ -93,6 +92,7 @@
       (send this wally-evaluate (send this image)))
     
     ; The variables push-sampling and pull-sampling say whether to do push or pull sampling respectively.
+    ; (Note that we can do neither, just push sampling, just pull sampling, or both.)
     ; push-sampling starts out as null, and then is set to #t or #f the first time the (get-sampling) function
     ; is called.  It doesn't change after that.  pull-sampling starts out as an empty set.  Whenever we enter
     ; a 'while' that needs pull sampling, we add the id for that 'while' to the pull-sampling set, and when we
@@ -148,8 +148,9 @@
                     (assert (> symbolic-time mytime))
                     (assert (or (equal? symbolic-time target)
                                 (and (< symbolic-time target)
-                                     (or (ormap (lambda (w) ((when-holder-condition w))) not-linearized-whens) ; is a when condition true?
-                                         ; add ormap on linearized-whens here
+                                     ; check whether a condition for any when is true or it's an interesting time for a while
+                                     (or (ormap (lambda (w) ((when-holder-condition w))) not-linearized-whens)
+                                         (ormap (lambda (w) (assert (linearize (when-holder-condition w) (when-holder-id w) mytime target))) linearized-whens)
                                          (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
                     ; add all required always constraints and stays to the solver
                     (send this solver-add-required solver)
@@ -181,6 +182,27 @@
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))
+
+    ; Return a symbolic expression that is a linear approximation of the value of f (a thunk) at symbolic-time.  mytime is the
+    ; current time, and target is the target new time.  We will advance to target or something sooner -- in other words, the
+    ; linear approximation is assumed valid just for the interval [mytime,target].  id is an id for expr, for caching.
+    (define (linearize f id mytime target)
+      (let ([dt (- target mytime)]
+            [e0 (find-value f id mytime)]
+            [e1 (find-value f id target)])
+        (+ e0 (/ (* (- symbolic-time mytime) (- e1 e0)) dt))))
+    ; helper functions for linearize.  find-expr-value looks up the cached value of the expression identified by id for the given time,
+    ; or computes it if not already in the cache and remembers it.  linearized-value-cache is the cache.  The keys are (id,time) pairs
+    ; and the values are the corresponding values of the expression.
+    (define (find-value f id time)
+      (hash-ref! linearized-value-cache (cons id time) (lambda () (compute-linearized-value f id time))))
+    (define (compute-linearized-value f id time)
+      (define solver (current-solver))
+      (assert (equal? symbolic-time time))
+      (send this solver-add-required solver)
+      (define sol (solver-check solver))
+      (evaluate (f) sol))
+    (define linearized-value-cache (make-hash))
     
     ; helper method -- update my time to newtime
     (define (update-time newtime)

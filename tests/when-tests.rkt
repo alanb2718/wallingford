@@ -115,6 +115,30 @@
    (check equal? (send-syncd r milliseconds-syncd) 300)
    (check equal? (send-syncd r evaluate-syncd get-times) '(("when 200" 200) ("when 100" 100)))))
 
+(define (when-linear)
+  (test-case
+   "when constraint whose condition involves a newly-defined variable that is a linear function of time"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-public-symbolic* x y real?)
+       (always (equal? x (- (* 2 (milliseconds)) 1)))
+       (assert (equal? y 0))
+       (send this solve)
+       (stay y)
+       (when (equal? x 5)
+         (assert (equal? y (milliseconds))))))
+   (define r (new tester%))
+   (send r start)
+   (send-syncd r advance-time-syncd 100)
+   (check equal? (send r get-x) 199)
+   (check equal? (send r get-y) 3)
+   (send-syncd r advance-time-syncd 200)
+   (check equal? (send r get-x) 399)
+   (check equal? (send r get-y) 3)))
+
+
 (define when-tests 
   (test-suite+
    "unit tests for when in reactive-thing%"
@@ -122,6 +146,7 @@
    (advance-time-one-when-separate-var)
    (advance-time-one-when-separate-var-soft-cn)
    (advance-time-multiple-whens)
+   (when-linear)
    ))
 
 (time (run-tests when-tests))

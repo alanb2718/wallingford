@@ -1,40 +1,46 @@
 #lang s-exp rosette
-;; unit tests for events involving complex expressions (not just seconds, milliseconds, and buttons)
+;; unit tests for when constraints that use a linearized condition
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
 (require "../applications/geothings.rkt")
 (require "../reactive/reactive.rkt")
 
-(provide complex-events)
+(provide linearized-when-tests)
 
 ; helper function to test for approximate equality
 (define (approx-equal? x y)
   (or (and (zero? x) (zero? y))
       (< (abs (- x y)) 1e-5)))
 
-(define (when-linear)
+(define (when-with-linearized-equality-test)
   (test-case
-   "when constraint whose condition involves a variable that is a linear function of time"
-   (define tester%
+   "when with a very simple test, but that is linearized"
+   (define count 0)
+   (define (get-count) count)
+   (define one-when-tester%
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       (define-public-symbolic* x y real?)
-       (always (equal? x (- (* 2 (milliseconds)) 1)))
-       (assert (equal? y 0))
-       (send this solve)
-       (stay y)
-       (when (equal? x 5)
-         (assert (equal? y (milliseconds))))))
-   (define r (new tester%))
-   (send r start)
-   (send-syncd r advance-time-syncd 100)
-   (check equal? (send r get-x) 199)
-   (check equal? (send r get-y) 3)
-   (send-syncd r advance-time-syncd 200)
-   (check equal? (send r get-x) 399)
-   (check equal? (send r get-y) 3)))
+       (when (equal? (milliseconds) 100)
+         (set! count (+ 1 count)))))
+   
+   (define r (new one-when-tester%))
+   (check equal? (send-syncd r milliseconds-syncd) 0)
+   (check equal? (send-syncd r evaluate-syncd get-count) 0)
+   
+   (send-thing r advance-time 30)
+   (check equal? (send-syncd r milliseconds-syncd) 30)
+   (check equal? (send-syncd r evaluate-syncd get-count) 0)
+   
+   (send-thing r advance-time 200)
+   (check equal? (send-syncd r milliseconds-syncd) 200)
+   (check equal? (send-syncd r evaluate-syncd get-count) 1)
+   
+   (send-thing r advance-time 300)
+   (check equal? (send-syncd r milliseconds-syncd) 300)
+   (check equal? (send-syncd r evaluate-syncd get-count) 1)))
+
 
 (define (when-nonlinear)
   (test-case
@@ -66,11 +72,11 @@
    ; (check equal? (send r get-y) 3)
    ))
 
-(define complex-events
+(define linearized-when-tests
   (test-suite+
-   "unit tests for events involving complex expressions"
-   (when-linear)
+   "unit tests for when constraints that use a linearized condition"
+   (when-with-linearized-equality-test)
    (when-nonlinear)
    ))
 
-(time (run-tests complex-events))
+(time (run-tests linearized-when-tests))
