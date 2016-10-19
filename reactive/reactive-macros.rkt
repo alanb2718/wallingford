@@ -30,12 +30,12 @@
 ; take an additional #:dt argument for the time step to use.
 (define-syntax when
   (syntax-rules ()
-    ((when condition e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #f #f)))
+    ((when condition #:linearize #:dt dt e ...)
+     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #t dt)))
     ((when condition #:linearize e ...)
      (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #t default-dt)))
-    ((when condition #:linearize #:dt dt e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #t dt)))))
+    ((when condition e ...)
+     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #f #f)))))
 
 ; 'while' macro.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
 ; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
