@@ -14,6 +14,7 @@
   (class abstract-reactive-thing%
     (super-new)
     (define when-holders '())  ; list of whens
+    (define linearized-when-holders '())
     (define while-holders '())
     ; symbolic-time is this thing's idea of the current time.  It is in milliseconds, and is relative to time-at-startup.
     (define-symbolic* symbolic-time real?)
@@ -30,10 +31,12 @@
       (send this wally-evaluate expr))
 
     ; these methods are for use by the macros (not for general public use)
-    (define/public (add-when-holder holder)
-      (set! when-holders (cons holder when-holders)))
-    (define/public (add-while-holder holder)
-      (set! while-holders (cons holder while-holders)))
+    (define/public (add-when-holder w)
+      (set! when-holders (cons w when-holders)))
+    (define/public (add-linearized-when-holder w)
+      (set! linearized-when-holders (cons w linearized-when-holders)))
+    (define/public (add-while-holder w)
+      (set! while-holders (cons w while-holders)))
     ; For max and min, accumulator-values holds the current max (or min) value for a max-value or min-value
     ; expression, indexed by a gensym'd id for that occurence of max-value or min-value.
     ; For integral, accumulator-values holds the value of the expression for the integral at the start of
@@ -137,24 +140,26 @@
       ; for each of the active numeric integral expressions and linearized when constraints.
       (let* ([active-integrals (filter nstruct? (hash-values accumulator-values))]
              [active-integral-times (map (lambda (n) (+ mytime (nstruct-dt n))) active-integrals)]
-             [not-linearized-whens (filter-not when-holder-linearize when-holders)]
-             [linearized-whens (filter when-holder-linearize when-holders)]
-             [linearized-when-times (map (lambda (n) (+ mytime (when-holder-dt n))) linearized-whens)]
+             [linearized-when-times (map (lambda (n) (+ mytime (linearized-when-holder-dt n))) linearized-when-holders)]
              [target (apply min (append (list initial-target) active-integral-times linearized-when-times))])
         ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
         ; to which to advance.
-        (cond [(and (null? when-holders) (null? while-holders)) target]
+        (cond [(and (null? when-holders) (null? linearized-when-holders) (null? while-holders)) target]
               [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
-                    (assert (> symbolic-time mytime))
-                    (assert (or (equal? symbolic-time target)
-                                (and (< symbolic-time target)
-                                     ; check whether a condition for any when is true or it's an interesting time for a while
-                                     (or (ormap (lambda (w) ((when-holder-condition w))) not-linearized-whens)
-                                         (ormap (lambda (w) (assert (linearize (when-holder-condition w) (when-holder-id w) mytime target))) linearized-whens)
-                                         (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
-                    ; add all required always constraints and stays to the solver
+                    ; add all required always constraints and stays to the solver (this needs to be done before linearizing whens)
                     (send this solver-add-required solver)
+                    ; interesting-time says that either symbolic-time is the target time, or a time such that the condition on a
+                    ; when holds, or it's an interesting time for a while.  Define this first, and then assert later, since in the
+                    ; process of defining it we assert some constraints when linearizing.
+                    (define interesting-time (or (equal? symbolic-time target)
+                                                 (and (< symbolic-time target)
+                                                      (or (ormap (lambda (w) ((when-holder-condition w))) when-holders)
+                                                          (ormap (lambda (w) (linearize-when w mytime target)) linearized-when-holders)
+                                                          (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
+                    (assert (> symbolic-time mytime))
+                    (assert interesting-time)
                     (solver-assert solver (asserts))
+                    ; this doesn't work: (solver-assert solver (list (> symbolic-time mytime) interesting-time))
                     (solver-minimize solver (list symbolic-time)) ; ask Z3 to minimize the symbolic time objective
                     (define sol (solver-check solver))
                     (define min-time (evaluate symbolic-time sol))
@@ -182,11 +187,14 @@
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))
-
+    ; return a constraint that is a linearized version of the when in linearized-when-holder w
+    (define (linearize-when w mytime target)
+      ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0))
     ; Return a symbolic expression that is a linear approximation of the value of f (a thunk) at symbolic-time.  mytime is the
     ; current time, and target is the target new time.  We will advance to target or something sooner -- in other words, the
     ; linear approximation is assumed valid just for the interval [mytime,target].  id is an id for expr, for caching.
     (define (linearize f id mytime target)
+      ; (printf "calling linearize f ~a id ~a mytime ~a target ~a \n"  f id mytime target)
       (let ([dt (- target mytime)]
             [e0 (find-value f id mytime)]
             [e1 (find-value f id target)])
@@ -196,12 +204,14 @@
     ; and the values are the corresponding values of the expression.
     (define (find-value f id time)
       (hash-ref! linearized-value-cache (cons id time) (lambda () (compute-linearized-value f id time))))
-    (define (compute-linearized-value f id time)
-      (define solver (current-solver))
-      (assert (equal? symbolic-time time))
-      (send this solver-add-required solver)
-      (define sol (solver-check solver))
-      (evaluate (f) sol))
+     (define (compute-linearized-value f id time)
+       (define solver (current-solver))
+       (send this solver-add-required solver)
+       (solver-assert solver (list (equal? symbolic-time time)))
+       (define sol (solver-check solver))
+       ; (printf "in compute-linearized-value time ~a value ~a sol ~a \n" time (evaluate (f) sol) sol)
+       (solver-clear solver)
+       (evaluate (f) sol))
     (define linearized-value-cache (make-hash))
     
     ; helper method -- update my time to newtime
@@ -212,7 +222,7 @@
         ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
         (send this solve)
         (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w))))
-                                     when-holders))
+                                     (append linearized-when-holders when-holders)))
         (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-condition w))))
                                       while-holders))
         ; Assert the constraints in all of the bodies of the active whens and whiles.  Also, solving clears the

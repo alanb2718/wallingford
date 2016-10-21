@@ -8,13 +8,15 @@
 (require "reactive-constants.rkt")
 
 (provide when while max-value min-value integral pull-sampling? interesting-time?
-         when-holder-condition when-holder-body when-holder-id when-holder-linearize when-holder-dt
+         when-holder-condition when-holder-body when-holder-id
+         linearized-when-holder-op linearized-when-holder-linearized-test linearized-when-holder-dt
          while-holder-condition while-holder-body while-holder-id while-holder-interesting while-holder-pull?)
 
 ; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
 ; id is a unique symbol for that when or while
-; for when, if the condition is approximated as a piecewise linear function, linearize should be #t and dt should be the interval size
-(struct when-holder (condition body id linearize dt) #:transparent)
+; for when, if the condition is approximated as a piecewise linear function, use linearized-when-holder.  dt should be the interval size
+(struct when-holder (condition body id) #:transparent)
+(struct linearized-when-holder when-holder (op linearized-test dt) #:transparent)
 ; for while-holder, pull? is #t if pull sampling should be used while this 'while' is active, and #f if not
 (struct while-holder (condition body id interesting pull?) #:transparent)
 
@@ -27,15 +29,16 @@
 ;
 ; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 ; There is an optional flag #:linearize, which means do a piecewise linear approximation of the condition.  This can
-; take an additional #:dt argument for the time step to use.
+; take an additional #:dt argument for the time step to use.  when constraints that use #:linearize have a restricted
+; form: a comparison operator followed by two expressions, e.g. (equal? (sin (seconds)) x)
 (define-syntax when
   (syntax-rules ()
-    ((when condition #:linearize #:dt dt e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #t dt)))
+    ((when (op e1 e2) #:linearize #:dt dt e ...)
+     (send this add-linearized-when-holder (linearized-when-holder (lambda () (op e1 e2)) (lambda () e ...) (gensym) op (lambda () (- e1 e2)) dt)))
     ((when condition #:linearize e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #t default-dt)))
+     (when condition #:linearize #:dt default-dt e ...))
     ((when condition e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym) #f #f)))))
+     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym))))))
 
 ; 'while' macro.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
 ; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the

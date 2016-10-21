@@ -22,21 +22,21 @@
      (class reactive-thing%
        (inherit milliseconds)
        (super-new)
-       (when (equal? (milliseconds) 100)
+       (when (equal? (milliseconds) 25) #:linearize
          (set! count (+ 1 count)))))
    
    (define r (new one-when-tester%))
    (check equal? (send-syncd r milliseconds-syncd) 0)
    (check equal? (send-syncd r evaluate-syncd get-count) 0)
-   
+   (send-thing r advance-time 8)
+   (check equal? (send-syncd r milliseconds-syncd) 8)
+   (check equal? (send-syncd r evaluate-syncd get-count) 0)
    (send-thing r advance-time 30)
    (check equal? (send-syncd r milliseconds-syncd) 30)
-   (check equal? (send-syncd r evaluate-syncd get-count) 0)
-   
+   (check equal? (send-syncd r evaluate-syncd get-count) 1)
    (send-thing r advance-time 200)
    (check equal? (send-syncd r milliseconds-syncd) 200)
    (check equal? (send-syncd r evaluate-syncd get-count) 1)
-   
    (send-thing r advance-time 300)
    (check equal? (send-syncd r milliseconds-syncd) 300)
    (check equal? (send-syncd r evaluate-syncd get-count) 1)))
@@ -76,7 +76,7 @@
   (test-suite+
    "unit tests for when constraints that use a linearized condition"
    (when-with-linearized-equality-test)
-   (when-nonlinear)
+  ; (when-nonlinear)
    ))
 
 (time (run-tests linearized-when-tests))
