@@ -15,7 +15,7 @@
 
 (define (when-with-linearized-equality-test)
   (test-case
-   "when with a very simple test, but that is linearized"
+   "when with a simple linearized test"
    (define count 0)
    (define (get-count) count)
    (define one-when-tester%
@@ -23,16 +23,15 @@
        (inherit milliseconds)
        (super-new)
        (when (equal? (milliseconds) 25) #:linearize
-         (set! count (+ 1 count)))))
-   
+         (set! count (+ 1 count)))))   
    (define r (new one-when-tester%))
    (check equal? (send-syncd r milliseconds-syncd) 0)
    (check equal? (send-syncd r evaluate-syncd get-count) 0)
    (send-thing r advance-time 8)
    (check equal? (send-syncd r milliseconds-syncd) 8)
    (check equal? (send-syncd r evaluate-syncd get-count) 0)
-   (send-thing r advance-time 30)
-   (check equal? (send-syncd r milliseconds-syncd) 30)
+   (send-thing r advance-time 49)
+   (check equal? (send-syncd r milliseconds-syncd) 49)
    (check equal? (send-syncd r evaluate-syncd get-count) 1)
    (send-thing r advance-time 200)
    (check equal? (send-syncd r milliseconds-syncd) 200)
@@ -41,42 +40,34 @@
    (check equal? (send-syncd r milliseconds-syncd) 300)
    (check equal? (send-syncd r evaluate-syncd get-count) 1)))
 
-
 (define (when-nonlinear)
   (test-case
-   "when constraint whose condition involves a variable that is a nonlinear function of time"
+   "when constraint with nonlinear condition, linearized"
    (define tester%
      (class reactive-thing%
-       (inherit milliseconds milliseconds-evaluated)
+       (inherit milliseconds seconds milliseconds-evaluated)
        (super-new)
-       (define-public-symbolic* x y real?)
-       ; using (milliseconds) causes an error since sin expects a concrete value
-       ; (always (equal? x (sin (milliseconds))))
-       (always (equal? x (sin (milliseconds-evaluated))))
-       (assert (equal? y 0))
+       (define-public-symbolic* x real?)
+       (assert (equal? x 0))
        (send this solve)
-       (stay y)
-       (when (equal? x 1/2)
-         (printf "when is active\n")
-         (assert (equal? y (milliseconds))))))
+       (stay x)
+       (when (equal? (expt (milliseconds) 2) 200) #:linearize 
+         (printf "when is active x: ~a time: ~a \n" (exact->inexact (send this wally-evaluate x)) (exact->inexact (milliseconds-evaluated)))
+         (assert (equal? x (milliseconds))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 100)
    (check equal? (send-syncd r milliseconds-syncd) 100)
    ; these tests don't work (and have the wrong values anyway) -- right now the 'when' is never triggered
-   ; (check equal? (send r get-x) 199)
-   ; (check equal? (send r get-y) 3)
-   (send-syncd r advance-time-syncd 200)
-   (check equal? (send-syncd r milliseconds-syncd) 200)
-   ; (check equal? (send r get-x) 399)
-   ; (check equal? (send r get-y) 3)
+   (check approx-equal? (send r get-y) 10)
    ))
+
 
 (define linearized-when-tests
   (test-suite+
    "unit tests for when constraints that use a linearized condition"
    (when-with-linearized-equality-test)
-  ; (when-nonlinear)
+  ; (when-nonlinear)   NOT YET WORKING
    ))
 
 (time (run-tests linearized-when-tests))
