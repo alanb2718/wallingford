@@ -208,7 +208,7 @@
             [e0 (find-value f id mytime)]
             [e1 (find-value f id target)])
         (+ e0 (/ (* (- symbolic-time mytime) (- e1 e0)) dt))))
-    ; helper functions for linearize.  find-expr-value looks up the cached value of the expression identified by id for the given time,
+    ; helper functions for linearize.  find-value looks up the cached value of the expression identified by id for the given time,
     ; or computes it if not already in the cache and remembers it.  linearized-value-cache is the cache.  The keys are (id,time) pairs
     ; and the values are the corresponding values of the expression.
     (define (find-value f id time)
