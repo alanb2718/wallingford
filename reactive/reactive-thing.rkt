@@ -45,8 +45,8 @@
     ; linearized-conditions are computed as we linearize whens - the keys are the ids for those whens.  This assumes that they
     ; are computed for the current update-time, so we can just keep replacing the old ones.
     (define linearized-conditions (make-hasheq))
-    ; struct to hold a linearized condition (valid for times between low and high)
-    (struct linearized-condition (expr low high) #:transparent)
+    ; struct to hold a linearized condition (valid for times between first and last)
+    (struct linearized-condition (expr first last) #:transparent)
 
     (define/public (max-min-helper max-or-min f id interesting)
       ; For max-value: if max-value isn't initialized yet or if this is the first time in the while, save the current maximum
@@ -147,7 +147,7 @@
       (let* ([active-integrals (filter nstruct? (hash-values accumulator-values))]
              [active-integral-times (map (lambda (n) (+ mytime (nstruct-dt n))) active-integrals)]
              [linearized-when-times (map (lambda (n) (+ mytime (linearized-when-holder-dt n))) linearized-when-holders)]
-             [target (apply min (append (list initial-target) active-integral-times linearized-when-times))])
+             [target (apply min (cons initial-target (append active-integral-times linearized-when-times)))])
         ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
         ; to which to advance.
         (cond [(and (null? when-holders) (null? linearized-when-holders) (null? while-holders)) target]
@@ -179,7 +179,6 @@
                     ; make sure we aren't stuck
                     (racket-when (equal? mytime min-time)
                                  (error 'find-time "unable to find a time to advance to that is greater than the current time"))
-                    ; (printf "in find-time min-time ~a \n" (exact->inexact min-time))
                     min-time])))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or is an
@@ -194,20 +193,28 @@
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))
-    ; return a constraint that is a linearized version of the when in linearized-when-holder w, and also cache it in linearized-conditions
+    ; Return an expression that is a linearized version of the when condition for linearized-when-holder w.
+    ; To do this, see if there is already a cached linearized condition that is currently valid (i.e., its last time
+    ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
+    ; an old one whose end time has already passed).
     (define (linearize-when w mytime target)
-      (let ([lc ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
-      (hash-set! linearized-conditions (when-holder-id w) (linearized-condition lc mytime target))
-      lc))
+      (let ([c (hash-ref linearized-conditions (when-holder-id w) #f)])
+        (if (and c (> (linearized-condition-last c) mytime))
+            (linearized-condition-expr c)
+            (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
+              (hash-set! linearized-conditions (when-holder-id w) (linearized-condition d mytime target))
+              d))))
     ; Return a symbolic expression that is a linear approximation of the value of f (a thunk) at symbolic-time.  mytime is the
     ; current time, and target is the target new time.  We will advance to target or something sooner -- in other words, the
     ; linear approximation is assumed valid just for the interval [mytime,target].  id is an id for expr, for caching.
     (define (linearize f id mytime target)
       ; (printf "calling linearize f ~a id ~a mytime ~a target ~a \n"  f id mytime target)
-      (let ([dt (- target mytime)]
-            [e0 (find-value f id mytime)]
-            [e1 (find-value f id target)])
-        (+ e0 (/ (* (- symbolic-time mytime) (- e1 e0)) dt))))
+      ; hack to get around a problem with mytime being a float
+      (let* ([exact-mytime (inexact->exact mytime)]
+             [dt (- target exact-mytime)]
+             [e0 (find-value f id exact-mytime)]
+             [e1 (find-value f id target)])
+        (+ e0 (/ (* (- symbolic-time exact-mytime) (- e1 e0)) dt))))
     ; helper functions for linearize.  find-value looks up the cached value of the expression identified by id for the given time,
     ; or computes it if not already in the cache and remembers it.  linearized-value-cache is the cache.  The keys are (id,time) pairs
     ; and the values are the corresponding values of the expression.

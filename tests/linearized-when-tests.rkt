@@ -11,7 +11,7 @@
 ; helper function to test for approximate equality
 (define (approx-equal? x y)
   (or (and (zero? x) (zero? y))
-      (< (abs (- x y)) 1e-5)))
+      (< (abs (- x y)) 1e-2)))
 
 (define (when-with-linearized-equality-test)
   (test-case
@@ -20,7 +20,7 @@
    (define (get-count) count)
    (define one-when-tester%
      (class reactive-thing%
-       (inherit milliseconds)
+       (inherit milliseconds milliseconds-evaluated)
        (super-new)
        (when (equal? (milliseconds) 25) #:linearize
          (set! count (+ 1 count)))))   
@@ -51,15 +51,13 @@
        (assert (equal? x 0))
        (send this solve)
        (stay x)
-       (when (equal? (expt (milliseconds) 2) 200) #:linearize 
-         (printf "when is active x: ~a time: ~a \n" (exact->inexact (send this wally-evaluate x)) (exact->inexact (milliseconds-evaluated)))
+       (when (equal? (expt (milliseconds) 2) 200) #:linearize   #:dt 1
          (assert (equal? x (milliseconds))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 100)
    (check equal? (send-syncd r milliseconds-syncd) 100)
-   ; these tests don't work (and have the wrong values anyway) -- right now the 'when' is never triggered
-   (check approx-equal? (send r get-y) 10)
+   (check approx-equal? (send r get-x) (sqrt 200))
    ))
 
 
@@ -67,7 +65,7 @@
   (test-suite+
    "unit tests for when constraints that use a linearized condition"
    (when-with-linearized-equality-test)
-  ; (when-nonlinear)   NOT YET WORKING
+   (when-nonlinear)
    ))
 
 (time (run-tests linearized-when-tests))
