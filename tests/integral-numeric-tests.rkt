@@ -237,7 +237,7 @@
    (check equal? (send r get-x) 80)
    (check equal? (send r get-y) 120)
    (check equal? (send r get-z) 200)
-   (check equal? (send r get-times) (list->mutable-set '(0.0 7.0 14.0 21.0 28.0 35.0 40.0)))
+   (check equal? (send r get-times) (list->mutable-set '(0 7 14 21 28 35 40)))
    ))
 
 (define integral-numeric-tests 

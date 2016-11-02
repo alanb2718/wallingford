@@ -4,7 +4,7 @@
 ; set debug to #t to print debugging information
 (define debug #f)
 
-(provide thing% always stay required high medium low lowest)
+(provide thing% always stay required high medium low lowest sol->exact)
 
 ; symbolic names for priorities (represented as integers here)
 ; this is a bit hazardous since the update method sums the priority values in
@@ -37,6 +37,18 @@
     ((stay expr #:priority p #:owner c) (stay expr #:owner c #:priority p))
     ((stay expr #:owner c #:priority p) (send c add-stay-helper expr p))))
 
+; function to convert any floats in a solution to an exact number (annoyingly, in solutions returned by Rosette
+; non-integral solutions are rationals, but integral solutions are floats)
+(define (sol->exact sol)
+  (match sol
+    [(model m)
+     (sat (for/hash ([(k v) m])
+                    (if (equal? real? (type-of k))
+                        (values k (inexact->exact v))
+                        (values k v))))]
+    [_ sol]))
+
+
 (define thing%
   (class object%
     (super-new)
@@ -51,16 +63,16 @@
     ; (used by reactive-thing% to decide whether there are temporal constraints)
     (define always-code '())
 
-    ; start current-solution as an empty solution
+    ; current-solution is the current solution to the constraints.  It should only include exact numbers,
+    ; not inexact.  Use the function update-current-solution to ensure this rather than setting it directly.
     (define current-solution (sat))
-
     (define/public (get-current-solution)
       current-solution)
-    (define/public (update-current-solution sol)
-      (set! current-solution sol))
     (define/public (wally-evaluate expr [soln current-solution])
       (evaluate expr soln))
-    
+    (define (update-current-solution newsol)
+      (set! current-solution (sol->exact newsol)))
+        
     ; clear the lists of always constraints and stays, as well as the global assertion store
     (define/public (clear)
       (set! required-constraint-procs '())
@@ -78,7 +90,7 @@
     ; When we return from calling solve, the solution object that is returned holds a solution.
     ; This thing's current-solution is also updated with the new solution found by this method.
     (define/public (solve)
-      (define old-soft-stay-vals (map (lambda (s) (evaluate s current-solution)) (map soft-target soft-stays)))
+      (define old-soft-stay-vals (map (lambda (s) (wally-evaluate s)) (map soft-target soft-stays)))
       ; get a handle to the current solver: ok to use the solver directly because we aren't doing finitization!
       (define solver (current-solver))
       (solver-clear solver)
@@ -107,7 +119,7 @@
         (printf "total-penalty: ~a\n" total-penalty))
 
       (solver-minimize solver (list total-penalty)) ; ask Z3 to minimize the total-penalty objective
-      (set! current-solution (solver-check solver))
+      (update-current-solution (solver-check solver))
       
       ; Clear the global assertion store.
       (clear-asserts!)
@@ -118,7 +130,7 @@
 
     ; helper method - add required constraints to the solver
     (define/public (solver-add-required solver)
-      (define old-required-stay-vals (map (lambda (s) (evaluate s current-solution)) required-stays))
+      (define old-required-stay-vals (map (lambda (s) (wally-evaluate s)) required-stays))
       ; add these constraints to the solver:
       ; * required always constraints
       ; * required stays

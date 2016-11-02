@@ -209,12 +209,10 @@
     ; linear approximation is assumed valid just for the interval [mytime,target].  id is an id for expr, for caching.
     (define (linearize f id mytime target)
       ; (printf "calling linearize f ~a id ~a mytime ~a target ~a \n"  f id mytime target)
-      ; hack to get around a problem with mytime being a float
-      (let* ([exact-mytime (inexact->exact mytime)]
-             [dt (- target exact-mytime)]
-             [e0 (find-value f id exact-mytime)]
-             [e1 (find-value f id target)])
-        (+ e0 (/ (* (- symbolic-time exact-mytime) (- e1 e0)) dt))))
+      (let ([dt (- target mytime)]
+            [e0 (find-value f id mytime)]
+            [e1 (find-value f id target)])
+        (+ e0 (/ (* (- symbolic-time mytime) (- e1 e0)) dt))))
     ; helper functions for linearize.  find-value looks up the cached value of the expression identified by id for the given time,
     ; or computes it if not already in the cache and remembers it.  linearized-value-cache is the cache.  The keys are (id,time) pairs
     ; and the values are the corresponding values of the expression.
@@ -224,7 +222,7 @@
        (define solver (current-solver))
        (send this solver-add-required solver)
        (solver-assert solver (list (equal? symbolic-time time)))
-       (define sol (solver-check solver))
+       (define sol (sol->exact (solver-check solver)))
        ; (printf "in compute-linearized-value time ~a value ~a sol ~a \n" time (evaluate (f) sol) sol)
        (solver-clear solver)
        (evaluate (f) sol))
