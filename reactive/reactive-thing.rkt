@@ -213,18 +213,21 @@
             [e0 (find-value f id mytime)]
             [e1 (find-value f id target)])
         (+ e0 (/ (* (- symbolic-time mytime) (- e1 e0)) dt))))
-    ; helper functions for linearize.  find-value looks up the cached value of the expression identified by id for the given time,
+    ; Helper functions for linearize.  find-value looks up the cached value of the expression identified by id for the given time,
     ; or computes it if not already in the cache and remembers it.  linearized-value-cache is the cache.  The keys are (id,time) pairs
-    ; and the values are the corresponding values of the expression.
+    ; and the values are the corresponding values of the expression.  This function assumes that the required constraints are in the
+    ; solver's assertion store (added earlier using the solver-add-required method).
     (define (find-value f id time)
       (hash-ref! linearized-value-cache (cons id time) (lambda () (compute-linearized-value f id time))))
      (define (compute-linearized-value f id time)
        (define solver (current-solver))
-       (send this solver-add-required solver)
+       ; don't need to add required constraints - they should already been there
+       ; (send this solver-add-required solver)
+       (solver-push solver)
        (solver-assert solver (list (equal? symbolic-time time)))
        (define sol (sol->exact (solver-check solver)))
        ; (printf "in compute-linearized-value time ~a value ~a sol ~a \n" time (evaluate (f) sol) sol)
-       (solver-clear solver)
+       (solver-pop solver)
        (evaluate (f) sol))
     (define linearized-value-cache (make-hash))
     
