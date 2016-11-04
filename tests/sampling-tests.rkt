@@ -78,7 +78,7 @@
 
 (define (sampling-with-while-and-button-press)
   (test-case
-   "test get-sampling with a while constraint whose condition is button-pressed?"
+   "test get-sampling with a while constraint whose test is button-pressed?"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds button-pressed?)
@@ -101,7 +101,7 @@
 
 (define (sampling-with-while-always-true)
   (test-case
-   "test get-sampling with a while constraint whose condition is just #t"
+   "test get-sampling with a while constraint whose test is just #t"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds button-pressed?)

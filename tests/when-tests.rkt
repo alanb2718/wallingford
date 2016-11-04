@@ -38,7 +38,7 @@
 
 (define (advance-time-one-when-separate-var)
   (test-case
-   "test advance time with one when, but with a separate var in the condition"
+   "test advance time with one when, but with a separate var in the test"
    (define count 0)
    (define (get-count) count)
    (define one-when-tester%
@@ -117,7 +117,7 @@
 
 (define (when-linear)
   (test-case
-   "when constraint whose condition involves a newly-defined variable that is a linear function of time"
+   "when constraint whose test involves a newly-defined variable that is a linear function of time"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)

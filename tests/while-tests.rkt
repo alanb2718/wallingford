@@ -102,7 +102,7 @@
 
 (define (too-hard-to-synthesize-interesting-time)
   (test-case
-   "a while with a condition that is too hard for the system to synthesize the #:interesting-time function"
+   "a while with a test that is too hard for the system to synthesize the #:interesting-time function"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)

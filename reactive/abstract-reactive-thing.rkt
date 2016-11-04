@@ -9,9 +9,9 @@
          mouse-event mouse-event-time mouse-event-pt mouse-event-button-state)
 ; Each reactive thing has its own thread.  Any messages from another thread should use send-thing
 ; or send-syncd for synchronization, rather than sending an ordinary message to the thing.
-; Internally there are some helper functions, and also some methods for use in constraint conditions
+; Internally there are some helper functions, and also some methods for use in constraint tests
 ; like (seconds) and (milliseconds).  When used in a when constraint they can be called directly,
-; since the constraint condition or body will be evaluated in the thing's thread -- otherwise they
+; since the constraint test or body will be evaluated in the thing's thread -- otherwise they
 ; should be called using evaluate-syncd.
 
 ; send-thing is like send, except that the message is directed to the thing's thread
@@ -252,8 +252,8 @@
       (for/set ([w watchers]) (send-thing w update-sampling)))
     
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' condition true.  If there aren't any values between the current time and the target that makes
-    ; a 'when' condition true, then return the target.  Note that the calls to solve in this function use a
+    ; 'when' test true.  If there aren't any values between the current time and the target that makes
+    ; a 'when' test true, then return the target.  Note that the calls to solve in this function use a
     ; separate assertion stack, leaving alone the global stack and solution.
     (define/public (find-time mytime target)
       (error "find-time -- subclass responsibility\n"))
@@ -273,7 +273,7 @@
             [(< (mouse-event-time (car events)) t) (list (car events))]
             [else (cons (car events) (pruned-event-list (cdr events) t))]))
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     ; In addition, this method should notify viewers if the sampling regime should be changed, and also
@@ -285,7 +285,7 @@
     
     ; ** alerts **
     (define (set-alert-helper)
-      ; Set an alert (using a new thread) that wakes up at the next time a when condition will hold given 
+      ; Set an alert (using a new thread) that wakes up at the next time a when test will hold given
       ; current knowledge.  If there is a button press or other external event in the meantime, set-alert
       ; will be called again and the event accounted for.  If no interesting times found, wake up in a week.
       ; In practice this means that the user will probably have exited the program in the meantime, but it

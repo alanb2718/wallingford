@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for integrals used in when conditions
+;; unit tests for integrals used in when tests
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
@@ -15,7 +15,7 @@
 
 (define (simple-integral-in-event)
   (test-case
-   "test a when constraint whose condition involves a variable that is constrained to be the integral of something"
+   "test a when constraint whose test involves a variable that is constrained to be the integral of something"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds)
@@ -41,7 +41,7 @@
 
 (define integrals-and-events
   (test-suite+
-   "unit tests for integrals used in when conditions"
+   "unit tests for integrals used in when tests"
    (simple-integral-in-event)
    ))
 

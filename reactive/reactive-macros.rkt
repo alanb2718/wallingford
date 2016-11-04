@@ -8,17 +8,17 @@
 (require "reactive-constants.rkt")
 
 (provide when while max-value min-value integral pull-sampling? interesting-time?
-         when-holder-condition when-holder-body when-holder-id
+         when-holder-test when-holder-body when-holder-id
          linearized-when-holder-op linearized-when-holder-linearized-test linearized-when-holder-dt
-         while-holder-condition while-holder-body while-holder-id while-holder-interesting while-holder-pull?)
+         while-holder-test while-holder-body while-holder-id while-holder-interesting while-holder-pull?)
 
-; structs to hold whens and whiles -- the condition and body are both thunks (anonymous lambdas)
+; structs to hold whens and whiles -- the test and body are both thunks (anonymous lambdas)
 ; id is a unique symbol for that when or while
-; for when, if the condition is approximated as a piecewise linear function, use linearized-when-holder.  dt should be the interval size
-(struct when-holder (condition body id) #:transparent)
+; for when, if the test is approximated as a piecewise linear function, use linearized-when-holder.  dt should be the interval size
+(struct when-holder (test body id) #:transparent)
 (struct linearized-when-holder when-holder (op linearized-test dt) #:transparent)
 ; for while-holder, pull? is #t if pull sampling should be used while this 'while' is active, and #f if not
-(struct while-holder (condition body id interesting pull?) #:transparent)
+(struct while-holder (test body id interesting pull?) #:transparent)
 
 ; interesting-time? will be rebound when evaluating a while -- it will be the value of the interesting-time function
 ; for that while at the current time.  It is used for accumulating operators such as max-value.
@@ -28,17 +28,17 @@
 ; or a subclass since they reference 'this'.
 ;
 ; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
-; There is an optional flag #:linearize, which means do a piecewise linear approximation of the condition.  This can
+; There is an optional flag #:linearize, which means do a piecewise linear approximation of the test.  This can
 ; take an additional #:dt argument for the time step to use.  when constraints that use #:linearize have a restricted
 ; form: a comparison operator followed by two expressions, e.g. (equal? (sin (seconds)) x)
 (define-syntax when
   (syntax-rules ()
     ((when (op e1 e2) #:linearize #:dt dt e ...)
      (send this add-linearized-when-holder (linearized-when-holder (lambda () (op e1 e2)) (lambda () e ...) (gensym) op (lambda () (- e1 e2)) dt)))
-    ((when condition #:linearize e ...)
-     (when condition #:linearize #:dt default-dt e ...))
-    ((when condition e ...)
-     (send this add-when-holder (when-holder (lambda () condition) (lambda () e ...) (gensym))))))
+    ((when test #:linearize e ...)
+     (when test #:linearize #:dt default-dt e ...))
+    ((when test e ...)
+     (send this add-when-holder (when-holder (lambda () test) (lambda () e ...) (gensym))))))
 
 ; 'while' macro.  #:interesting-time is an optional argument - it is a function that returns true if the current symbolic-time
 ; is an 'interesting' time, i.e., advance-time should stop at that time and evaluate because something may happen in the
@@ -47,8 +47,8 @@
 ; rigid syntax for this).  Otherwise if no explicit #:interesting-time function is given it's an error.
 (define-syntax while
   (syntax-rules (and <= >= button-pressed? milliseconds)
-    ((while condition #:interesting-time interesting e ...)
-     (add-while condition interesting e ...))
+    ((while test #:interesting-time interesting e ...)
+     (add-while test interesting e ...))
     ((while (button-pressed?) e ...)
      (add-while (send this button-pressed?)
                 (cond [(send this button-going-down?) 'first]
@@ -73,8 +73,8 @@
      (error 'while "unable to automatically synthesize #:interesting-time function"))))
 ; add-while and add-while-with-time-bounds are helper macros (just for internal use)
 ; if the body of the while has temporal constraints then we need to use pull sampling
-(define-syntax-rule (add-while condition interesting e ...)
-  (send this add-while-holder (while-holder (lambda () condition)
+(define-syntax-rule (add-while test interesting e ...)
+  (send this add-while-holder (while-holder (lambda () test)
                                             (lambda () e ...)
                                             (gensym)
                                             (lambda () interesting)

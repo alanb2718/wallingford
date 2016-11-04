@@ -42,11 +42,11 @@
     ; For integral, accumulator-values holds the value of the expression for the integral at the start of
     ; the program or the start of the current 'while' in which it occurs.
     (define accumulator-values (make-hasheq))
-    ; linearized-conditions are computed as we linearize whens - the keys are the ids for those whens.  This assumes that they
+    ; linearized-tests are computed as we linearize whens - the keys are the ids for those whens.  This assumes that they
     ; are computed for the current update-time, so we can just keep replacing the old ones.
-    (define linearized-conditions (make-hasheq))
-    ; struct to hold a linearized condition (valid for times between first and last)
-    (struct linearized-condition (expr first last) #:transparent)
+    (define linearized-tests (make-hasheq))
+    ; struct to hold a linearized test (valid for times between first and last)
+    (struct linearized-test (expr first last) #:transparent)
 
     (define/public (max-min-helper max-or-min f id interesting)
       ; For max-value: if max-value isn't initialized yet or if this is the first time in the while, save the current maximum
@@ -133,7 +133,7 @@
       (append (if push-sampling '(push) '()) (if (set-empty? pull-sampling) '() '(pull))))
     
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' condition true or is an interesting time for a 'while'.  If there aren't any such values
+    ; 'when' test true or is an interesting time for a 'while'.  If there aren't any such values
     ; between the current time and the target, then just return the target.  Note that the calls to solve in this
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
     ; Additionally, if there are constraints that use delta time (active numeric integral constraints or when
@@ -154,12 +154,12 @@
               [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
                     ; add all required always constraints and stays to the solver (this needs to be done before linearizing whens)
                     (send this solver-add-required solver)
-                    ; interesting-time says that either symbolic-time is the target time, or a time such that the condition on a
+                    ; interesting-time says that either symbolic-time is the target time, or a time such that the test on a
                     ; when holds, or it's an interesting time for a while.  Define this first, and then assert later, since in the
                     ; process of defining it we assert some constraints when linearizing.
                     (define interesting-time (or (equal? symbolic-time target)
                                                  (and (< symbolic-time target)
-                                                      (or (ormap (lambda (w) ((when-holder-condition w))) when-holders)
+                                                      (or (ormap (lambda (w) ((when-holder-test w))) when-holders)
                                                           (ormap (lambda (w) (linearize-when w mytime target)) linearized-when-holders)
                                                           (ormap (lambda (w) ((while-holder-interesting w))) while-holders)))))
                     (assert (> symbolic-time mytime))
@@ -181,7 +181,7 @@
                                  (error 'find-time "unable to find a time to advance to that is greater than the current time"))
                     min-time])))
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true or is an
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true or is an
     ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)
@@ -193,16 +193,16 @@
                  ; if we didn't get to the target try again
                  (cond [(< next-time target) 
                         (advance-time-helper target)]))])))
-    ; Return an expression that is a linearized version of the when condition for linearized-when-holder w.
-    ; To do this, see if there is already a cached linearized condition that is currently valid (i.e., its last time
+    ; Return an expression that is a linearized version of the when test for linearized-when-holder w.
+    ; To do this, see if there is already a cached linearized test that is currently valid (i.e., its last time
     ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
     ; an old one whose end time has already passed).
     (define (linearize-when w mytime target)
-      (let ([c (hash-ref linearized-conditions (when-holder-id w) #f)])
-        (if (and c (> (linearized-condition-last c) mytime))
-            (linearized-condition-expr c)
+      (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
+        (if (and c (> (linearized-test-last c) mytime))
+            (linearized-test-expr c)
             (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
-              (hash-set! linearized-conditions (when-holder-id w) (linearized-condition d mytime target))
+              (hash-set! linearized-tests (when-holder-id w) (linearized-test d mytime target))
               d))))
     ; Return a symbolic expression that is a linear approximation of the value of f (a thunk) at symbolic-time.  mytime is the
     ; current time, and target is the target new time.  We will advance to target or something sooner -- in other words, the
@@ -237,18 +237,18 @@
       (let ([notify-changed #f])
         (assert (equal? symbolic-time newtime))
         (define saved-asserts (asserts))
-        ; Solve all constraints and then find which when conditions hold.  Put those whens in active-whens.
+        ; Solve all constraints and then find which when tests hold.  Put those whens in active-whens.
         (send this solve)
-        (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-condition w)))) when-holders))
-        ; very local helper function - either look up the cached linearized condition for when holder w, or if none return its normal condition
-        (define (lookup-linearized-condition w)
-          ;(printf "in lookup-linearized-condition current time ~a newtime ~a w ~a linearized-conditions ~a \n" (send this milliseconds-evaluated)
-          ;        newtime w linearized-conditions)
-          (let ([c (hash-ref linearized-conditions (when-holder-id w) #f)])
-            ;(printf "c ~a actual condition ~a \n" c ((when-holder-condition w)))
-            (if c (linearized-condition-expr c) ((when-holder-condition w)))))
-        (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-condition w))) linearized-when-holders))
-        (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-condition w)))) while-holders))
+        (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-test w)))) when-holders))
+        ; very local helper function - either look up the cached linearized test for when holder w, or if none return its normal test
+        (define (lookup-linearized-test w)
+          ;(printf "in lookup-linearized-test current time ~a newtime ~a w ~a linearized-tests ~a \n" (send this milliseconds-evaluated)
+          ;        newtime w linearized-tests)
+          (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
+            ;(printf "c ~a actual test ~a \n" c ((when-holder-test w)))
+            (if c (linearized-test-expr c) ((when-holder-test w)))))
+        (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-test w))) linearized-when-holders))
+        (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-test w)))) while-holders))
         ; Assert the constraints in all of the bodies of the active whens and whiles.  Also, solving clears the
         ; global assertion store, so add that back in.  This includes the assertion that symbolic-time
         ; equals next-time.  Then solve again.

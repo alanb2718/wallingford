@@ -5,7 +5,7 @@
 ;   (update-mysolution)
 ;   (find-time mytime target)
 ; In addition, (update-mysolution) should send the message notify-watchers-changed after the solution changed,
-; if it did (except if we are doing pull sampling and this isn't the last time the condition is true).  These
+; if it did (except if we are doing pull sampling and this isn't the last time the test is true).  These
 ; methods are all called by the thing's thread, so do not need to (and should not) use send-thing or send-syncd
 
 (require racket/gui/base)
@@ -32,12 +32,12 @@
     (define current-sampling #f)
 
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' condition true.  If there aren't any values between the current time and the target that makes
-    ; a 'when' condition true, then return the target.
+    ; 'when' test true.  If there aren't any values between the current time and the target that makes
+    ; a 'when' test true, then return the target.
     (define/override (find-time mytime target)
       (error "should override in subclasses\n"))
     
-    ; Advance time to the smaller of the target and the smallest value that makes a 'when' condition true.
+    ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)

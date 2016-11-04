@@ -105,7 +105,7 @@
        (assert (equal? x 0))
        (send this solve)
        (stay x)
-       ; the while condition holds for the first 10 milliseconds of every 100 millisecond interval
+       ; the while test holds for the first 10 milliseconds of every 100 millisecond interval
        (while (<= (remainder (milliseconds) 100) 10)
               #:interesting-time (let ([r (remainder (milliseconds) 100)])
                                    (cond [(zero? r) 'first]

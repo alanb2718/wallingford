@@ -1,5 +1,5 @@
 #lang s-exp rosette
-;; unit tests for when constraints that use a linearized condition
+;; unit tests for when constraints that use a linearized test
 
 (require rackunit rackunit/text-ui rosette/lib/roseunit)
 (require "../core/wallingford.rkt")
@@ -42,7 +42,7 @@
 
 (define (when-nonlinear)
   (test-case
-   "when constraint with nonlinear condition, linearized"
+   "when constraint with nonlinear test, linearized"
    (define tester%
      (class reactive-thing%
        (inherit milliseconds seconds milliseconds-evaluated)
@@ -63,7 +63,7 @@
 
 (define linearized-when-tests
   (test-suite+
-   "unit tests for when constraints that use a linearized condition"
+   "unit tests for when constraints that use a linearized test"
    (when-with-linearized-equality-test)
    (when-nonlinear)
    ))
