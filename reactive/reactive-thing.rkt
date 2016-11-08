@@ -181,7 +181,20 @@
                     ; make sure we aren't stuck
                     (racket-when (equal? mytime min-time)
                                  (error 'find-time "unable to find a time to advance to that is greater than the current time"))
-                    min-time])))
+                    ; If min-time might be due to a linearized test returning #t, we may want to refine the estimate, since it will
+                    ; in general be an approximation.  First check for termination in this case: if find-time is being called with
+                    ; a target less than epsilon from mytime, terminate anyway and return min-time (where epsilon is a property of
+                    ; the linearized when).  Otherwise call find-time again with a target half the distance from mytime, so that
+                    ; this will do a binary search.  Doing a binary search is relatively simple -- this could probably be made more
+                    ; efficient by trying to refine the search to an interval around min-time.  Note that the initial dt is specified
+                    ; by the when holder -- it should be such that we don't miss a true minimum time.  (This would happen, for example,
+                    ; with a test involving a sin function and a dt that just jumped to the next 0 of the expression.)
+                    (define active-linearized-when (findf (lambda (w) (send this wally-evaluate (lookup-linearized-test w))) linearized-when-holders))
+                    ; fix this to get all of them, and find the smallest epsilon
+                    ; temporary hack - build in 1/10 as epsilon.  later replace this with epsilion from the when
+                    (if (and active-linearized-when (> (- initial-target mytime) 1/10))
+                        (find-time mytime (+ mytime (/ (- initial-target mytime) 2)))
+                        min-time)])))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true or is an
     ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.
@@ -232,7 +245,15 @@
        (solver-pop solver)
        (evaluate (f) sol))
     (define linearized-value-cache (make-hash))
-    
+
+    ; helper function - either look up the cached linearized test for when holder w, or if none return its normal test
+    (define (lookup-linearized-test w)
+      ;(printf "in lookup-linearized-test current time ~a newtime ~a w ~a linearized-tests ~a \n" (send this milliseconds-evaluated)
+      ;        newtime w linearized-tests)
+      (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
+        ;(printf "c ~a actual test ~a \n" c ((when-holder-test w)))
+        (if c (linearized-test-expr c) ((when-holder-test w)))))
+
     ; helper method -- update my time to newtime
     (define (update-time newtime)
       ; (printf "in update-time newtime ~a \n" (exact->inexact newtime))
@@ -242,13 +263,6 @@
         ; Solve all constraints and then find which when tests hold.  Put those whens in active-whens.
         (send this solve)
         (define active-whens (filter (lambda (w) (send this wally-evaluate ((when-holder-test w)))) when-holders))
-        ; very local helper function - either look up the cached linearized test for when holder w, or if none return its normal test
-        (define (lookup-linearized-test w)
-          ;(printf "in lookup-linearized-test current time ~a newtime ~a w ~a linearized-tests ~a \n" (send this milliseconds-evaluated)
-          ;        newtime w linearized-tests)
-          (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
-            ;(printf "c ~a actual test ~a \n" c ((when-holder-test w)))
-            (if c (linearized-test-expr c) ((when-holder-test w)))))
         (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-test w))) linearized-when-holders))
         (define active-whiles (filter (lambda (w) (send this wally-evaluate ((while-holder-test w)))) while-holders))
         ; Assert the constraints in all of the bodies of the active whens and whiles.  Also, solving clears the
