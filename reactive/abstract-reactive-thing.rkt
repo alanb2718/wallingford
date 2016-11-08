@@ -252,8 +252,8 @@
       (for/set ([w watchers]) (send-thing w update-sampling)))
     
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
-    ; 'when' test true.  If there aren't any values between the current time and the target that makes
-    ; a 'when' test true, then return the target.  Note that the calls to solve in this function use a
+    ; 'when' test true or is an interesting time for a 'while'.  If there aren't any such values between the
+    ; current and target times, then return the target.  Note that the calls to solve in this function use a
     ; separate assertion stack, leaving alone the global stack and solution.
     (define/public (find-time mytime target)
       (error "find-time -- subclass responsibility\n"))
