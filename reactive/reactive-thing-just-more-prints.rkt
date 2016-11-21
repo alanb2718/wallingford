@@ -193,7 +193,7 @@
                     ; efficient by trying to refine the search to an interval around min-time.  Note that the initial dt is specified
                     ; by the when holder -- it should be such that we don't miss a true minimum time.  (This would happen, for example,
                     ; with a test involving a sin function and a dt that just jumped to the next 0 of the expression.)
-                    (define active-linearized-when (findf (lambda (w) (send this wally-evaluate (lookup-linearized-test w) sol)) linearized-when-holders))
+                    (define active-linearized-when (findf (lambda (w) (send this wally-evaluate (lookup-linearized-test w))) linearized-when-holders))
                     (define temp-lookup-tests (map (lambda (w) (lookup-linearized-test w)) linearized-when-holders))
                     (define temp-new-tests (map (lambda (w) (linearize-when w mytime target)) linearized-when-holders))
                     (define temp-evald-new-tests (map (lambda (t) (send this wally-evaluate t sol)) temp-new-tests))
@@ -205,10 +205,10 @@
                     ; temporary hack - build in 1/10 as epsilon.  later replace this with epsilion from the when
                     (printf "linearized when tests (at end of find-time) ~a\n" (map (lambda (w) (linearize-when w mytime target)) linearized-when-holders))
                     (printf "active-linearized-when ~a final test result ~a \n" active-linearized-when
-                            (and active-linearized-when (> (- target mytime) 1/10)))
+                            (and active-linearized-when (> (- initial-target mytime) 1/10)))
                    
-                    (let ([ans (if (and active-linearized-when (> (- target mytime) 1/10))
-                        (begin (printf "recursive call in find-time \n") (find-time mytime (+ mytime (/ (- target mytime) 2))))
+                    (let ([ans (if (and active-linearized-when (> (- initial-target mytime) 1/10))
+                        (begin (printf "recursive call in find-time \n") (find-time mytime (+ mytime (/ (- initial-target mytime) 2))))
                         min-time)])
                       (printf  "find-time result ~a \n" ans)
                       ans)])))
@@ -235,7 +235,7 @@
     ; an old one whose end time has already passed).
     (define (linearize-when w mytime target)
       (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
-        (if (and c (= (linearized-test-first c) mytime) (= (linearized-test-last c) target))
+        (if (and c (> (linearized-test-last c) mytime))
             (linearized-test-expr c)
             (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
               (hash-set! linearized-tests (when-holder-id w) (linearized-test d mytime target))
