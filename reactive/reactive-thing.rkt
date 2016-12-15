@@ -7,6 +7,8 @@
 (require "reactive-macros.rkt")
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
+; racket-when should be added to "Lambda-like Keywords" in Preferences/Editing to make indentation work correctly
+; TODO: file in this preference automatically
 
 (provide when while racket-when max-value min-value integral reactive-thing% interesting-time?)
 
@@ -220,15 +222,36 @@
     ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)
-      (printf "start of advance-time-helper target ~a \n"   target)
       (let ([mytime (send this milliseconds-evaluated)])
+        (printf "start of advance-time-helper target ~a mytime ~a \n"   target mytime)
         ; make sure we haven't gone by the target time already - if we have, don't do anything
-        (cond [(< mytime target)
-               (let ([next-time (find-time mytime target)])
-                 (update-time next-time)
-                 ; if we didn't get to the target try again
-                 (cond [(< next-time target) 
-                        (advance-time-helper target)]))])))
+        (racket-when (< mytime target)
+          (let ([next-time (find-time mytime target)])
+            (update-time next-time)
+            ; Check whether we actually got to next-time.  If not, that means that we are doing a binary search for a time that
+            ; makes a when condition hold, and didn't get to next-time.  In that case do a recursive call to advance-time-helper.
+            (printf "after update-time my-actual-time ~a next-time ~a target ~a \n" (send this milliseconds-evaluated) next-time target)
+            (racket-when (< (send this milliseconds-evaluated) next-time)
+              (printf "doing recursive call to advance-time-helper because my new time ~a is less than next-time ~a \n"
+                      (send this milliseconds-evaluated) next-time)
+              (advance-time-helper next-time))
+            ; if we didn't get to the target try again (note that this is independent of the again/search stuff)
+            (racket-when (< next-time target)
+              (printf "doing recursive call to advance-time-helper because next-time ~a is less than target ~a \n" next-time target)
+              (advance-time-helper target))))))
+    
+;    (define/override (xadvance-time-helper target)
+;      (printf "start of advance-time-helper target ~a \n"   target)
+;      (let ([mytime (send this milliseconds-evaluated)])
+;        ; make sure we haven't gone by the target time already - if we have, don't do anything
+;        (cond [(< mytime target)
+;               (let ([next-time (find-time mytime target)])
+;                 (update-time next-time)
+;                 ; if we didn't get to the target try again
+;                 (cond [(< next-time target) 
+;                        (advance-time-helper target)]))])))
+
+    
     ; Return an expression that is a linearized version of the when test for linearized-when-holder w.
     ; To do this, see if there is already a cached linearized test that is currently valid (i.e., its last time
     ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
