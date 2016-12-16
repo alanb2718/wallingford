@@ -255,6 +255,8 @@
     ; 'when' test true or is an interesting time for a 'while'.  If there aren't any such values between the
     ; current and target times, then return the target.  Note that the calls to solve in this function use a
     ; separate assertion stack, leaving alone the global stack and solution.
+    ; Return two values: the time to advance to, and either #f or a new target
+    ; (the new target is used if we are doing a binary search for a time to advance to)
     (define/public (find-time mytime target)
       (error "find-time -- subclass responsibility\n"))
 
@@ -293,10 +295,10 @@
       ; value, and then avoid setting up a thread at all.  This seems a bit cleaner and also like it would
       ; make zero difference in practice.)
       (terminate-old-alert)
-      (let* ([mytime (send this milliseconds-evaluated)]
-             [in-a-week (+ mytime (* 1000 60 60 24 7))] ; a week from now
-             [target (find-time mytime in-a-week)]
-             [seconds-to-sleep  (/ (- target (current-clock-time)) 1000.0)])
+      (let*-values ([(mytime) (send this milliseconds-evaluated)]
+                    [(in-a-week) (+ mytime (* 1000 60 60 24 7))] ; a week from now
+                    [(target ignore) (find-time mytime in-a-week)]
+                    [(seconds-to-sleep)  (/ (- target (current-clock-time)) 1000.0)])
         ; make a new thread that wakes up at target and advances time to the target, then recursively
         ; sets another alert
         (set! alert (thread (lambda ()

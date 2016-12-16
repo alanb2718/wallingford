@@ -143,7 +143,8 @@
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
     ; Additionally, if there are constraints that use delta time (active numeric integral constraints or when
     ; constraints with the #:linearize option set), we can't advance by more than the smallest of the dt's --
-    ; adjust the target time accordingly.
+    ; adjust the target time accordingly.  Return two values: the time to advance to, and either #f or a new target
+    ; (the new target is used if we are doing a binary search for a time to advance to)
     (define/override (find-time mytime initial-target)
       ; For all active numeric integral expressions and when constraints with the #:linearize option set, find the
       ; smallest new times for each as the sum of the current time plus its dt (delta time).  The target time will
@@ -156,7 +157,7 @@
         (printf "target ~a \n" (exact->inexact target))
         ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
         ; to which to advance.
-        (cond [(and (null? when-holders) (null? linearized-when-holders) (null? while-holders)) target]
+        (cond [(and (null? when-holders) (null? linearized-when-holders) (null? while-holders)) (values target #f)]
               [else (define solver (current-solver)) ; can use direct calls to solver b/c we aren't doing finitization!
                     ; add all required always constraints and stays to the solver (this needs to be done before linearizing whens)
                     (send this solver-add-required solver)
@@ -208,13 +209,29 @@
                     (printf "linearized when tests (at end of find-time) ~a\n" (map (lambda (w) (linearize-when w mytime target)) linearized-when-holders))
                     (printf "active-linearized-when ~a final test result ~a \n" active-linearized-when
                             (and active-linearized-when (> (- target mytime) 1/10)))
-                   
-                    (let ([ans (if (and active-linearized-when (> (- target mytime) 1/10))
-                        (begin (printf "recursive call in find-time \n") (find-time mytime (+ mytime (/ (- target mytime) 2))))
-                        min-time)])
-                      (printf  "find-time result ~a \n" ans)
-                      ans)])))
+                    
+                    (cond [(and active-linearized-when (> (- target mytime) 1/10))
+                           (printf "recursive call in find-time target ~a mytime ~a \n" (exact->inexact target) (exact->inexact mytime))
+                           (let-values ([(ans revised-target) (find-time mytime (+ mytime (/ (- target mytime) 2)))])
+                             (printf "about to return from recursive call in find-time mytime ~a target ~a min-time ~a ans ~a revised-target ~a \n"
+                                     (exact->inexact mytime) (exact->inexact target) (exact->inexact  min-time)  (exact->inexact ans)
+                                     (if revised-target (exact->inexact revised-target) revised-target))
+                             (values ans (if revised-target revised-target target)))]
+                          [else  (printf "about to return from NONrecursive call in find-time mytime ~a min-time ~a target ~a \n"
+                                         (exact->inexact mytime)  (exact->inexact min-time) (exact->inexact target))
+                                 (values min-time #f)])])))
+    
+; nice version!
+;    (if (and active-linearized-when (> (- target mytime) 1/10))
+;                        (find-time mytime (+ mytime (/ (- target mytime) 2)))  ; returns two values!
+;                        (values min-time target))])))
 
+    ; old version!
+;                    (let ([ans (if (and active-linearized-when (> (- target mytime) 1/10))
+;                        (begin (printf "recursive call in find-time \n") (find-time mytime (+ mytime (/ (- target mytime) 2))))
+;                        min-time)])
+;                      (printf  "find-time result ~a \n" ans)
+;                      ans)])))
 
                             
     
@@ -223,35 +240,24 @@
     ; If we advance time to something less than 'target', call advance-time-helper again.
     (define/override (advance-time-helper target)
       (let ([mytime (send this milliseconds-evaluated)])
-        (printf "start of advance-time-helper target ~a mytime ~a \n"   target mytime)
+        (printf "start of advance-time-helper target ~a mytime ~a \n"   (exact->inexact target) (exact->inexact mytime))
         ; make sure we haven't gone by the target time already - if we have, don't do anything
         (racket-when (< mytime target)
-          (let ([next-time (find-time mytime target)])
+          (let-values ([(next-time revised-target) (find-time mytime target)])
             (update-time next-time)
-            ; Check whether we actually got to next-time.  If not, that means that we are doing a binary search for a time that
-            ; makes a when condition hold, and didn't get to next-time.  In that case do a recursive call to advance-time-helper.
-            (printf "after update-time my-actual-time ~a next-time ~a target ~a \n" (send this milliseconds-evaluated) next-time target)
-            (racket-when (< (send this milliseconds-evaluated) next-time)
-              (printf "doing recursive call to advance-time-helper because my new time ~a is less than next-time ~a \n"
-                      (send this milliseconds-evaluated) next-time)
-              (advance-time-helper next-time))
-            ; if we didn't get to the target try again (note that this is independent of the again/search stuff)
+            ; If revised-target is not #f, then we are doing a search for a time, and need to get to revised-target first,
+            ; before tackling target
+            (printf "after update-time my-actual-time ~a next-time ~a revised-target ~a target ~a \n"
+                     (exact->inexact (send this milliseconds-evaluated))  (exact->inexact next-time)
+                     (if revised-target (exact->inexact revised-target) revised-target)  (exact->inexact target))
+            (racket-when revised-target
+              (printf "doing recursive call to advance-time-helper because revised-target is not #f \n")
+              (advance-time-helper revised-target))
+            ; if we didn't get to the target try again (note that this is independent of the revised-target stuff)
             (racket-when (< next-time target)
-              (printf "doing recursive call to advance-time-helper because next-time ~a is less than target ~a \n" next-time target)
+              (printf "doing recursive call to advance-time-helper because next-time ~a is less than target ~a \n"
+                      (exact->inexact next-time) (exact->inexact target))
               (advance-time-helper target))))))
-    
-;    (define/override (xadvance-time-helper target)
-;      (printf "start of advance-time-helper target ~a \n"   target)
-;      (let ([mytime (send this milliseconds-evaluated)])
-;        ; make sure we haven't gone by the target time already - if we have, don't do anything
-;        (cond [(< mytime target)
-;               (let ([next-time (find-time mytime target)])
-;                 (update-time next-time)
-;                 ; if we didn't get to the target try again
-;                 (cond [(< next-time target) 
-;                        (advance-time-helper target)]))])))
-
-    
     ; Return an expression that is a linearized version of the when test for linearized-when-holder w.
     ; To do this, see if there is already a cached linearized test that is currently valid (i.e., its last time
     ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
