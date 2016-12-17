@@ -282,7 +282,9 @@
     ; if this thing has potentially changed (so that the viewer should refresh the image).  This is done
     ; using the notify-watchers-update-sampling and notify-watchers-changed messages respectively (both
     ; defined in this class).
-    (define/public (advance-time-helper target)
+    ; To accommodate a binary search for a time, we can also have a revised-target, which will be either just target
+    ; (the normal case), or some time less than target (if we are doing a recursive search)
+    (define/public (advance-time-helper target [revised-target target])
       (error "advance-time-helper -- subclass responsibility\n"))
     
     ; ** alerts **

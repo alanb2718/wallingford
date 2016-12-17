@@ -238,21 +238,25 @@
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true or is an
     ; interesting time for a 'while'.  Solve all constraints in active when and while constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
-    (define/override (advance-time-helper target)
+    ; To accommodate a binary search for a time, we can also have a revised-target, which will be either just target
+    ; (the normal case), or some time less than target (if we are doing a recursive search)
+    (define/override (advance-time-helper target [revised-target target])
       (let ([mytime (send this milliseconds-evaluated)])
-        (printf "start of advance-time-helper target ~a mytime ~a \n"   (exact->inexact target) (exact->inexact mytime))
+        (printf "start of advance-time-helper target ~a revised-target ~a mytime ~a \n"
+                (exact->inexact target) (exact->inexact revised-target) (exact->inexact mytime))
         ; make sure we haven't gone by the target time already - if we have, don't do anything
-        (racket-when (< mytime target)
-          (let-values ([(next-time revised-target) (find-time mytime target)])
+        (racket-when (< mytime revised-target)
+          (let-values ([(next-time new-revised-target) (find-time mytime revised-target)])
             (update-time next-time)
-            ; If revised-target is not #f, then we are doing a search for a time, and need to get to revised-target first,
+            ; If new-revised-target is not #f, then we are doing a search for a time, and need to get to new-revised-target first,
             ; before tackling target
-            (printf "after update-time my-actual-time ~a next-time ~a revised-target ~a target ~a \n"
+            (printf "after update-time my-actual-time ~a next-time ~a revised-target ~a new-revised-target ~a target ~a \n"
                      (exact->inexact (send this milliseconds-evaluated))  (exact->inexact next-time)
-                     (if revised-target (exact->inexact revised-target) revised-target)  (exact->inexact target))
-            (racket-when revised-target
-              (printf "doing recursive call to advance-time-helper because revised-target is not #f \n")
-              (advance-time-helper revised-target))
+                     revised-target
+                     (if new-revised-target (exact->inexact new-revised-target) new-revised-target)  (exact->inexact target))
+            (racket-when new-revised-target
+              (printf "doing recursive call to advance-time-helper because new-revised-target is not #f \n")
+              (advance-time-helper target new-revised-target))
             ; if we didn't get to the target try again (note that this is independent of the revised-target stuff)
             (racket-when (< next-time target)
               (printf "doing recursive call to advance-time-helper because next-time ~a is less than target ~a \n"
