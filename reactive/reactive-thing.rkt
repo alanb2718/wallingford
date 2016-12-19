@@ -32,7 +32,7 @@
     (define/public (previous expr)
       (send this wally-evaluate expr))
 
-    ; these methods are for use by the macros (not for general public use)
+    ; these methods are for use by the macros (not for general public use, despite the 'public' declaration)
     (define/public (add-when-holder w)
       (set! when-holders (cons w when-holders)))
     (define/public (add-linearized-when-holder w)
@@ -84,7 +84,7 @@
       (let* ([new-var-value (send this wally-evaluate (var-fn))]
              [new-expr-value (send this wally-evaluate (expr-fn))]
              ; See if there is already a saved value for this id, if so use it.  Hack (similar to symbolic evaluation hack):
-             ; If time=0, ignore the old value, so that instead we *replace* it if present, to get around the bug where the
+             ; if time=0, ignore the old value, so that instead we *replace* it if present, to get around the bug where the
              ; integral expression is being evaluated on startup before all variables have values.
              [new-sum (if (and (hash-has-key? numeric-integral-values id) (> (send this milliseconds-evaluated) 0))
                           (let* ([oldstruct (hash-ref numeric-integral-values id)]
@@ -143,8 +143,8 @@
     ; method don't change the current solution, which is held in an instance variable defined in thing%.
     ; Additionally, if there are constraints that use delta time (active numeric integral constraints or when
     ; constraints with the #:linearize option set), we can't advance by more than the smallest of the dt's --
-    ; adjust the target time accordingly.  Return two values: the time to advance to, and either #f or a new target
-    ; (the new target is used if we are doing a binary search for a time to advance to)
+    ; adjust the target time accordingly.  Return two values: the time to advance to, and either #f or a new target.
+    ; (The new target is used if we are doing a binary search for a time to advance to.)
     (define/override (find-time mytime initial-target)
       ; For all active numeric integral expressions and when constraints with the #:linearize option set, find the
       ; smallest new times for each as the sum of the current time plus its dt (delta time).  The target time will
