@@ -49,7 +49,7 @@
        (send this solve)
        (stay x)
        (when (equal? (expt (milliseconds) 2) 200) #:linearize
-         (printf "**** when is active **** time ~a \n" (milliseconds-evaluated))
+         ; (printf "**** when is active **** time ~a \n" (milliseconds-evaluated))
          (assert (equal? x (milliseconds-evaluated))))))
    (define r (new tester%))
    (send r start)
