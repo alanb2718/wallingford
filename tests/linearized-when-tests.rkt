@@ -14,6 +14,29 @@
       (< (abs (- x y)) (* 0.1 x))))
 
 
+(define (when-linear)
+  (test-case
+   "same as when-linear in when-tests.rkt, except that the when is linearized"
+   (define tester%
+     (class reactive-thing%
+       (inherit milliseconds)
+       (super-new)
+       (define-public-symbolic* x y real?)
+       (always (equal? x (- (* 2 (milliseconds)) 1)))
+       (assert (equal? y 0))
+       (send this solve)
+       (stay y)
+       (when (equal? x 5) #:linearize
+         (assert (equal? y (milliseconds))))))
+   (define r (new tester%))
+   (send r start)
+   (send-syncd r advance-time-syncd 100)
+   (check equal? (send r get-x) 199)
+   (check equal? (send r get-y) 3)
+   (send-syncd r advance-time-syncd 200)
+   (check equal? (send r get-x) 399)
+   (check equal? (send r get-y) 3)))
+
 (define (when-nonlinear)
   (test-case
    "when constraint with nonlinear test, linearized"
@@ -32,13 +55,14 @@
    (send r start)
    (send-syncd r advance-time-syncd 100)
    (check equal? (send-syncd r milliseconds-syncd) 100)
-   (check equal? (send r get-x) (sqrt 200))
+   (check approx-equal? (send r get-x) (sqrt 200))
    ))
 
 
 (define linearized-when-tests
   (test-suite+
    "unit tests for when constraints that use a linearized test"
+   (when-linear)
    (when-nonlinear)
    ))
 

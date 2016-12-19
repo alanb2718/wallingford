@@ -257,11 +257,11 @@
             (racket-when new-revised-target
               (printf "doing recursive call to advance-time-helper because new-revised-target is not #f \n")
               (advance-time-helper target new-revised-target))
-            ; if we didn't get to the target try again (note that this is independent of the revised-target stuff)
-            (racket-when (< next-time target)
-              (printf "doing recursive call to advance-time-helper because next-time ~a is less than target ~a \n"
-                      (exact->inexact next-time) (exact->inexact target))
-              (advance-time-helper target))))))
+            ; if we didn't get to revised-target try again (note that this is independent of the new-revised-target stuff)
+            (racket-when (< next-time revised-target)
+              (printf "doing recursive call to advance-time-helper because next-time ~a is less than revised-target ~a (target is ~a) \n"
+                      (exact->inexact next-time) (exact->inexact revised-target) (exact->inexact target))
+              (advance-time-helper revised-target))))))
     ; Return an expression that is a linearized version of the when test for linearized-when-holder w.
     ; To do this, see if there is already a cached linearized test that is currently valid (i.e., its last time
     ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
@@ -271,7 +271,8 @@
       (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
         (racket-when c (printf "found existing test first ~a last ~a \n"
                                (exact->inexact (linearized-test-first c)) (exact->inexact (linearized-test-last c))))
-        (if (and c (= (linearized-test-first c) mytime) (= (linearized-test-last c) target))
+        ; existing test is OK if the *first* time is <= mytime ---- but the last must exactly equal target
+        (if (and c (<= (linearized-test-first c) mytime) (= (linearized-test-last c) target))
             (begin (printf "returning an existing test ~a \n" (linearized-test-expr c)) (linearized-test-expr c))
             (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
               (hash-set! linearized-tests (when-holder-id w) (linearized-test d mytime target))
