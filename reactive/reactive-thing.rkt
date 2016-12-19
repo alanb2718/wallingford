@@ -267,11 +267,15 @@
     ; is greater than mytime).  If so, use its expression; otherwise generate a new one and cache it (potentially overwriting
     ; an old one whose end time has already passed).
     (define (linearize-when w mytime target)
+      (printf "calling linearize-when id ~a mytime ~a target ~a \n" (when-holder-id w) (exact->inexact mytime) (exact->inexact target))
       (let ([c (hash-ref linearized-tests (when-holder-id w) #f)])
+        (racket-when c (printf "found existing test first ~a last ~a \n"
+                               (exact->inexact (linearized-test-first c)) (exact->inexact (linearized-test-last c))))
         (if (and c (= (linearized-test-first c) mytime) (= (linearized-test-last c) target))
-            (linearized-test-expr c)
+            (begin (printf "returning an existing test ~a \n" (linearized-test-expr c)) (linearized-test-expr c))
             (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
               (hash-set! linearized-tests (when-holder-id w) (linearized-test d mytime target))
+              (printf "updating test -- new test ~a \n" d)
               d))))
     ; Return a symbolic expression that is a linear approximation of the value of f (a thunk) at symbolic-time.  mytime is the
     ; current time, and target is the target new time.  We will advance to target or something sooner -- in other words, the

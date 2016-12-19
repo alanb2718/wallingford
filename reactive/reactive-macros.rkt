@@ -30,7 +30,9 @@
 ; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 ; There is an optional flag #:linearize, which means do a piecewise linear approximation of the test.  This can
 ; take an additional #:dt argument for the time step to use.  when constraints that use #:linearize have a restricted
-; form: a comparison operator followed by two expressions, e.g. (equal? (sin (seconds)) x)
+; form: a comparison operator followed by two expressions, e.g. (equal? (sin (seconds)) x).  The comparison operator must
+; be an equality test of some sort, e.g. equal? or =.  Inequality tests won't work with a when since they would be true
+; for more than an instant.
 (define-syntax when
   (syntax-rules ()
     ((when (op e1 e2) #:linearize #:dt dt e ...)
