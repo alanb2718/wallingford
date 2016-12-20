@@ -9,14 +9,16 @@
 
 (provide when while max-value min-value integral pull-sampling? interesting-time?
          when-holder-test when-holder-body when-holder-id
-         linearized-when-holder-op linearized-when-holder-linearized-test linearized-when-holder-dt
+         linearized-when-holder-op linearized-when-holder-linearized-test linearized-when-holder-dt linearized-when-holder-epsilon
          while-holder-test while-holder-body while-holder-id while-holder-interesting while-holder-pull?)
 
-; structs to hold whens and whiles -- the test and body are both thunks (anonymous lambdas)
+; Structs to hold whens and whiles -- the test and body are both thunks (anonymous lambdas).
 ; id is a unique symbol for that when or while
-; for when, if the test is approximated as a piecewise linear function, use linearized-when-holder.  dt should be the interval size
+; For when, if the test is approximated as a piecewise linear function, use linearized-when-holder.  In that case
+; dt should be the interval size, and epsilon the tolerance for testing whether the time found by a linear approximation
+; is close enough to the target time.
 (struct when-holder (test body id) #:transparent)
-(struct linearized-when-holder when-holder (op linearized-test dt) #:transparent)
+(struct linearized-when-holder when-holder (op linearized-test dt epsilon) #:transparent)
 ; for while-holder, pull? is #t if pull sampling should be used while this 'while' is active, and #f if not
 (struct while-holder (test body id interesting pull?) #:transparent)
 
@@ -35,10 +37,14 @@
 ; for more than an instant.
 (define-syntax when
   (syntax-rules ()
-    ((when (op e1 e2) #:linearize #:dt dt e ...)
-     (send this add-linearized-when-holder (linearized-when-holder (lambda () (op e1 e2)) (lambda () e ...) (gensym) op (lambda () (- e1 e2)) dt)))
+    ((when (op e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...)
+     (send this add-linearized-when-holder (linearized-when-holder (lambda () (op e1 e2)) (lambda () e ...) (gensym) op (lambda () (- e1 e2)) dt epsilon)))
     ((when test #:linearize e ...)
-     (when test #:linearize #:dt default-dt e ...))
+     (when test #:linearize #:dt default-dt #:epsilon default-epsilon e ...))
+    ((when test #:linearize #:dt dt e ...)
+     (when test #:linearize #:dt dt #:epsilon default-epsilon e ...))
+    ((when test #:linearize #:epsilon epsilon e ...)
+     (when test #:linearize #:dt default-dt #:epsilon epsilon e ...))
     ((when test e ...)
      (send this add-when-holder (when-holder (lambda () test) (lambda () e ...) (gensym))))))
 

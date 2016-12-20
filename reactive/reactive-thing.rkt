@@ -197,10 +197,9 @@
                     ; efficient by trying to refine the search to an interval around min-time.  Note that the initial dt is specified
                     ; by the when holder -- it should be such that we don't miss a true minimum time.  (This would happen, for example,
                     ; with a test involving a sin function and a dt that just jumped to the next 0 of the expression.)
-                    (define active-linearized-when (findf (lambda (w) (send this wally-evaluate (lookup-linearized-test w) sol)) linearized-when-holders))
-                    ; fix this to get all of them, and find the smallest epsilon
-                    ; temporary hack - build in 1/10 as epsilon.  later replace this with epsilion from the when
-                    (cond [(and active-linearized-when (> (- target mytime) 1/10))
+                    (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-test w) sol)) linearized-when-holders))
+                    (define min-epsilon (apply min (map linearized-when-holder-epsilon active-linearized-whens)))
+                    (cond [(and (pair? active-linearized-whens) (> (- target mytime) min-epsilon))
                            ; (printf "recursive call in find-time target ~a mytime ~a \n" (exact->inexact target) (exact->inexact mytime))
                            (let-values ([(ans revised-target) (find-time mytime (+ mytime (/ (- target mytime) 2)))])
                              ; (printf "about to return from recursive call in find-time mytime ~a target ~a min-time ~a ans ~a revised-target ~a \n"
