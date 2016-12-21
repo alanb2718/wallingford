@@ -131,7 +131,7 @@
                                                         (or (eq? (mouse-event-button-state e) 'going-down)
                                                             (eq? (mouse-event-button-state e) 'going-up))))
                                        (send this get-mouse-events))])
-        (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets)))))))
+        (values (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets))) #f)))))
 
 (make-viewer (new compiled-quadrilateral%) #:title "Compiled version of quadrilateral" #:sleep-time 0.01)
 

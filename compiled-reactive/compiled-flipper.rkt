@@ -33,7 +33,7 @@
                                                         (< (mouse-event-time e) target)
                                                         (eq? (mouse-event-button-state e) 'going-down)))
                                        (send this get-mouse-events))])
-        (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets)))))))
+        (values (if (null? potential-targets) target (apply min (map mouse-event-time potential-targets))) #f)))))
 
 (make-viewer (new compiled-flipper%) #:title "Compiled version of flipper" #:sleep-time 0.01)
 

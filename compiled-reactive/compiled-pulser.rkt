@@ -19,6 +19,6 @@
       ;    (always* (equal? (circle-radius (image)) (+ 60 (* 50 (sin (seconds))))))))
       (send this set-image! (struct-copy circle (image) [radius  (+ 60 (* 50 (sin (seconds))))])))
     (define/override (find-time mytime target)
-      target)))
+      (values target #f))))
 
 (make-viewer (new compiled-pulser%) #:title "Compiled version of pulser" #:sleep-time 0.05)

@@ -34,16 +34,16 @@
     ; Find a time to advance to.  This will be the smaller of the target and the smallest value that makes a
     ; 'when' test true.  If there aren't any values between the current time and the target that makes
     ; a 'when' test true, then return the target.
-    (define/override (find-time mytime target)
+    (define/override (find-time mytime initial-target)
       (error "should override in subclasses\n"))
     
     ; Advance time to the smaller of the target and the smallest value that makes a 'when' test true.
     ; Solve all constraints in active when constraints.
     ; If we advance time to something less than 'target', call advance-time-helper again.
-    (define/override (advance-time-helper target)
+    (define/override (advance-time-helper target [revised-target target])
       ; make sure we haven't gone by the target time already - if we have, don't do anything
       (cond [(< my-time target)
-             (let ([next-time (send this find-time my-time target)])
+             (let-values ([(next-time ignore) (send this find-time my-time target)])
                (send this set-my-time next-time)
                ; notify watchers if the sampling has changed
                (let ([new-sampling (send this get-sampling)])

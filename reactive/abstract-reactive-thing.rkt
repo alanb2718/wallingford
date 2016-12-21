@@ -257,7 +257,7 @@
     ; separate assertion stack, leaving alone the global stack and solution.
     ; Return two values: the time to advance to, and either #f or a new target
     ; (the new target is used if we are doing a binary search for a time to advance to)
-    (define/public (find-time mytime target)
+    (define/public (find-time mytime initial-target)
       (error "find-time -- subclass responsibility\n"))
 
     (define/public (advance-time-and-prune-events target)
