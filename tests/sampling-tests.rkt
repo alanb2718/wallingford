@@ -63,7 +63,7 @@
        (super-new)
        (define-symbolic* x real?)
        (while (and (<= 50 (milliseconds)) (<= (milliseconds) 100))
-              (assert (equal? x (milliseconds))))))
+         (assert (equal? x (milliseconds))))))
    (define r (new tester%))
    ; need to send get-sampling syncd -- otherwise the thread will likely lag behind
    (check equal? (send-syncd r get-sampling-syncd) '(push))
@@ -85,7 +85,7 @@
        (super-new)
        (define-symbolic* x real?)
        (while (button-pressed?)
-              (assert (equal? x (milliseconds))))))
+         (assert (equal? x (milliseconds))))))
    (define r (new tester%))
    (send-thing r mouse-event   0 0 0 'up)
    (send-thing r mouse-event 100 0 0 'going-down)
@@ -108,8 +108,8 @@
        (super-new)
        (define-symbolic* x real?)
        (while #t
-              #:interesting-time (if (equal? (milliseconds) 0) 'first #f)
-              (assert (equal? x (milliseconds))))))
+         #:interesting-time (if (equal? (milliseconds) 0) 'first #f)
+         (assert (equal? x (milliseconds))))))
    (define r (new tester%))
    ; Hack: call get-sampling when time is 0 so that the reactive-thing knows that
    ; pull sampling should be active at time 0.  (Also see the comment in the get-sampling

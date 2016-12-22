@@ -7,7 +7,7 @@
 (require "reactive-macros.rkt")
 ; make Racket's version of 'when' available also
 (require (only-in racket [when racket-when]))
-; racket-when should be added to "Lambda-like Keywords" in Preferences/Editing to make indentation work correctly
+; racket-when and while should be added to "Lambda-like Keywords" in Preferences/Editing to make indentation work correctly
 ; TODO: file in this preference automatically
 
 (provide when while racket-when max-value min-value integral reactive-thing% interesting-time?)

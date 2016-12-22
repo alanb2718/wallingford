@@ -74,10 +74,10 @@
       (assert (equal? selected -1)))
     
     (while (button-pressed?)
-           ; evaluate selected, since we don't want to change the selection to satisfy the constraint in the while!
-           (let ([i (send this wally-evaluate selected)])
-             (cond [(> i -1) (assert (equal? (mouse-position) (list-ref points i)))])))
-   
+      ; evaluate selected, since we don't want to change the selection to satisfy the constraint in the while!
+      (let ([i (send this wally-evaluate selected)])
+        (cond [(> i -1) (assert (equal? (mouse-position) (list-ref points i)))])))
+    
     
     (define (close? p1 p2)
       (define gap 10)

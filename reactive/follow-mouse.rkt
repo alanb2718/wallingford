@@ -10,7 +10,7 @@
     (super-new)
     (send this set-image! (make-circle this))
     (while (button-pressed?)
-           (assert (equal? (circle-center (image)) (mouse-position))))
+      (assert (equal? (circle-center (image)) (mouse-position))))
     (send this solve)))
 
 

@@ -50,7 +50,7 @@
        (send this solve)
        (stay x)
        (while (and (>= (milliseconds) 50) (<= (milliseconds) 110))
-              (assert (equal? x (integral 2 #:numeric))))))
+         (assert (equal? x (integral 2 #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)
@@ -82,7 +82,7 @@
        (send this solve)
        (stay x)
        (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
-              (assert (equal? x (integral 2 #:numeric))))))
+         (assert (equal? x (integral 2 #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)
@@ -107,11 +107,11 @@
        (stay x)
        ; the while test holds for the first 10 milliseconds of every 100 millisecond interval
        (while (<= (remainder (milliseconds) 100) 10)
-              #:interesting-time (let ([r (remainder (milliseconds) 100)])
-                                   (cond [(zero? r) 'first]
-                                         [(equal? r 10) 'last]
-                                         [else #f]))
-              (assert (equal? x (integral 2  #:numeric))))))
+         #:interesting-time (let ([r (remainder (milliseconds) 100)])
+                              (cond [(zero? r) 'first]
+                                    [(equal? r 10) 'last]
+                                    [else #f]))
+         (assert (equal? x (integral 2  #:numeric))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 5)

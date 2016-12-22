@@ -100,10 +100,10 @@
         (set! selected-point (findf (lambda (p) (close? m (send this wally-evaluate p))) points))))
     ; for some reason having this version doesn't work:
     ; (while (and (point? selected-point) (button-pressed?))
-    ;       #:interesting-time (button-going-up?)
-    ;       (assert (equal? selected-point (mouse-position))))
+    ;   #:interesting-time (button-going-up?)
+    ;   (assert (equal? selected-point (mouse-position))))
     (while (button-pressed?)
-           (if selected-point (assert (equal? selected-point bounded-mp)) (void)))
+      (if selected-point (assert (equal? selected-point bounded-mp)) (void)))
     (define (close? p1 p2)
       (define gap 10)
       (and (< (abs (- (point-x p1) (point-x p2))) gap) (< (abs (- (point-y p1) (point-y p2))) gap)))

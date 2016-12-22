@@ -67,7 +67,7 @@
     ;       #:interesting-time (button-going-up?)
     ;       (assert (equal? selected-point (mouse-position))))
     (while (button-pressed?)
-           (if selected-point (assert (equal? selected-point (mouse-position))) (void)))
+      (if selected-point (assert (equal? selected-point (mouse-position))) (void)))
     (define (close? p1 p2)
       (define gap 10)
       (and (< (abs (- (point-x p1) (point-x p2))) gap) (< (abs (- (point-y p1) (point-y p2))) gap)))

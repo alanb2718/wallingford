@@ -27,11 +27,11 @@
        (stay x)
        (stay y)
        (while (<= (milliseconds) 10)
-       ; this alternate test doesn't work:
-              ; (while (<= x 50)
-              #:interesting-time (if (equal? (milliseconds) 10) 'last #f)
-              (assert (equal? x (integral (milliseconds))))
-              (assert (equal? y (milliseconds))))))
+         ; this alternate test doesn't work:
+         ; (while (<= x 50)
+         #:interesting-time (if (equal? (milliseconds) 10) 'last #f)
+         (assert (equal? x (integral (milliseconds))))
+         (assert (equal? y (milliseconds))))))
    (define r (new tester%))
    (send r start)
    (send-syncd r advance-time-syncd 200)

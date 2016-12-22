@@ -53,13 +53,13 @@
        (stay y)
        (stay z)
        (while (and (>= (milliseconds) 10) (<= (milliseconds) 100))
-              #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
-              (assert (equal? x (max-value (milliseconds))))
-              ; y is equal to 3 times the number of milliseconds up to ms=50, then goes back down
-              ; (note that 50 is thus an interesting time!)
-              (assert (equal? y (* 3 (max-value (let ([m (milliseconds)]) (if (<= m 50) m (- 100 m)))))))
-              ; z is the negation of y, basically
-              (assert (equal? z (* 3 (min-value (let ([m (milliseconds)]) (if (<= m 50) (- m) (- m 100))))))))))
+         #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
+         (assert (equal? x (max-value (milliseconds))))
+         ; y is equal to 3 times the number of milliseconds up to ms=50, then goes back down
+         ; (note that 50 is thus an interesting time!)
+         (assert (equal? y (* 3 (max-value (let ([m (milliseconds)]) (if (<= m 50) m (- 100 m)))))))
+         ; z is the negation of y, basically
+         (assert (equal? z (* 3 (min-value (let ([m (milliseconds)]) (if (<= m 50) (- m) (- m 100))))))))))
    (define r (new tester%))
    
    (send-thing r advance-time 5)
