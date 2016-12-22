@@ -24,7 +24,7 @@
              (set! count (+ 1 count))
              (void)))
        (define/override (find-time mytime target)
-         (if (and (< mytime 100) (> target 100)) 100 target))))
+         (values (if (and (< mytime 100) (> target 100)) 100 target) #f))))
    
    (define r (new one-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)
@@ -60,9 +60,10 @@
                   (set! times (cons (list "when 200" now) times))]
                  [else (void)])))
        (define/override (find-time mytime target)
-         (cond [(and (< mytime 100) (> target 100)) 100]
-               [(and (< mytime 200) (> target 200)) 200]
-               [else target]))))
+         (values (cond [(and (< mytime 100) (> target 100)) 100]
+                       [(and (< mytime 200) (> target 200)) 200]
+                       [else target])
+                 #f))))
    
    (define r (new multi-when-tester%))
    (check-equal? (send-syncd r milliseconds-syncd) 0)

@@ -18,8 +18,8 @@
        (super-new)
        (define x 5)
        ; (while (and (>= (milliseconds) 50) (<= (milliseconds) 100))
-       ;       #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
-       ;       (assert (equal? x (milliseconds))))
+       ;   #:interesting-time (or (equal? (milliseconds) 50) (equal? (milliseconds) 100))
+       ;   (assert (equal? x (milliseconds))))
        (define/override (get-sampling)
          (if (and (>= (milliseconds) 50) (<= (milliseconds) 100))
              '(push pull)
@@ -29,9 +29,10 @@
                 (set! x (milliseconds))
                 (send this notify-watchers-changed)]))
        (define/override (find-time mytime target)
-         (cond [(and (< mytime 50) (> target 50)) 50]
-               [(and (< mytime 100) (> target 100)) 100]
-               [else target]))
+         (values (cond [(and (< mytime 50) (> target 50)) 50]
+                       [(and (< mytime 100) (> target 100)) 100]
+                       [else target])
+                 #f))
        (define/public (get-x) x)))
    (define r (new tester%))
    (send-thing r advance-time 10)
@@ -68,9 +69,10 @@
          (cond [(and (>= (milliseconds) 50) (<= (milliseconds) 100))
                 (set! x (milliseconds))]))
        (define/override (find-time mytime target)
-         (cond [(and (< mytime 50) (> target 50)) 50]
-               [(and (< mytime 100) (> target 100)) 100]
-               [else target]))
+         (values (cond [(and (< mytime 50) (> target 50)) 50]
+                       [(and (< mytime 100) (> target 100)) 100]
+                       [else target])
+                 #f))
        (define/public (get-x) x)))
    (define r (new tester%))
    (send-thing r advance-time 10)
@@ -110,9 +112,10 @@
          (cond [(and (>= (milliseconds) 50) (<= (milliseconds) 80))
                 (set! times (cons (send this wally-evaluate (milliseconds)) times))]))
        (define/override (find-time mytime target)
-         (cond [(and (< mytime 50) (> target 50)) 50]
-               [(and (< mytime 80) (> target 80)) 80]
-               [else target]))))
+         (values (cond [(and (< mytime 50) (> target 50)) 50]
+                       [(and (< mytime 80) (> target 80)) 80]
+                       [else target])
+                 #f))))
    (define r (new tester%))
    (send-thing r advance-time 10)
    (check equal? (send-syncd r milliseconds-syncd) 10)
