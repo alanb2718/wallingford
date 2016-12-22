@@ -9,7 +9,7 @@
 
 (provide when while max-value min-value integral pull-sampling? interesting-time?
          when-holder-test when-holder-body when-holder-id
-         linearized-when-holder-op linearized-when-holder-linearized-test linearized-when-holder-dt linearized-when-holder-epsilon
+         linearized-when-holder-linearized-test linearized-when-holder-dt linearized-when-holder-epsilon
          while-holder-test while-holder-body while-holder-id while-holder-interesting while-holder-pull?)
 
 ; Structs to hold whens and whiles -- the test and body are both thunks (anonymous lambdas).
@@ -18,7 +18,7 @@
 ; dt should be the interval size, and epsilon the tolerance for testing whether the time found by a linear approximation
 ; is close enough to the target time.
 (struct when-holder (test body id) #:transparent)
-(struct linearized-when-holder when-holder (op linearized-test dt epsilon) #:transparent)
+(struct linearized-when-holder when-holder (linearized-test dt epsilon) #:transparent)
 ; for while-holder, pull? is #t if pull sampling should be used while this 'while' is active, and #f if not
 (struct while-holder (test body id interesting pull?) #:transparent)
 
@@ -32,13 +32,14 @@
 ; 'when' macro.  This overrides the built-in Racket 'when' - use 'racket-when' or 'cond' for that.
 ; There is an optional flag #:linearize, which means do a piecewise linear approximation of the test.  This can
 ; take an additional #:dt argument for the time step to use.  when constraints that use #:linearize have a restricted
-; form: a comparison operator followed by two expressions, e.g. (equal? (sin (seconds)) x).  The comparison operator must
-; be an equality test of some sort, e.g. equal? or =.  Inequality tests won't work with a when since they would be true
-; for more than an instant.
+; form: a comparison operator (= or equal?) followed by two expressions, e.g. (= (sin (seconds)) x).  Inequality
+; tests wouldn't work with a when since they would be true for more than an instant.
 (define-syntax when
-  (syntax-rules ()
-    ((when (op e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...)
-     (send this add-linearized-when-holder (linearized-when-holder (lambda () (op e1 e2)) (lambda () e ...) (gensym) op (lambda () (- e1 e2)) dt epsilon)))
+  (syntax-rules (= equal?)
+    ((when (= e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...)
+     (send this add-linearized-when-holder (linearized-when-holder (lambda () (= e1 e2)) (lambda () e ...) (gensym) (lambda () (- e1 e2)) dt epsilon)))
+    ((when (equal? e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...)   ; just convert (when (equal? ....) ...) to (when (= ....) ...)
+     (when (= e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...))
     ((when test #:linearize e ...)
      (when test #:linearize #:dt default-dt #:epsilon default-epsilon e ...))
     ((when test #:linearize #:dt dt e ...)

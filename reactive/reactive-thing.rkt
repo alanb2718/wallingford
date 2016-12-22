@@ -155,7 +155,7 @@
       (let* ([active-integral-times (map (lambda (n) (+ mytime (nstruct-dt n))) (hash-values numeric-integral-values))]
              [linearized-when-times (map (lambda (n) (+ mytime (linearized-when-holder-dt n))) linearized-when-holders)]
              [target (apply min (cons initial-target (append active-integral-times linearized-when-times)))])
-        ; (printf "target ~a \n" (exact->inexact target))
+       ; (printf "target ~a \n" (exact->inexact target))
         ; If there aren't any when or while statements, just return the target time, otherwise solve for the time
         ; to which to advance.
         (cond [(and (null? when-holders) (null? linearized-when-holders) (null? while-holders)) (values target #f)]
@@ -191,12 +191,17 @@
                                  (error 'find-time "unable to find a time to advance to that is greater than the current time"))
                     ; If min-time might be due to a linearized test returning #t, we may want to refine the estimate, since it will
                     ; in general be an approximation.  First check for termination in this case: if find-time is being called with
-                    ; a target less than epsilon from mytime, terminate anyway and return min-time (where epsilon is a property of
-                    ; the linearized when).  Otherwise call find-time again with a target half the distance from mytime, so that
-                    ; this will do a binary search.  Doing a binary search is relatively simple -- this could probably be made more
-                    ; efficient by trying to refine the search to an interval around min-time.  Note that the initial dt is specified
-                    ; by the when holder -- it should be such that we don't miss a true minimum time.  (This would happen, for example,
-                    ; with a test involving a sin function and a dt that just jumped to the next 0 of the expression.)
+                    ; a target less than epsilon from mytime, we are looking at a very small interval, and presumably the
+                    ; linearization is reasonably accurate within that small interval.  In that case terminate and return min-time.
+                    ; (The epsilon in this test is a property of the linearized when.)  Otherwise call find-time again with a target
+                    ; half the distance from mytime, so that this will do a binary search.  The initial dt is specified by the when
+                    ; holder -- it should be such that we don't miss a true minimum time.  (This would happen, for example, with
+                    ; a test involving a sin function and a dt that just jumped to the next 0 of the expression.)
+                    ; Some possibilities for alternate algorithms that would (on the other hand) be more complicated to implement:
+                    ; rather than a binary search, it would probably be more efficient to try to refine the search to an interval
+                    ; around min-time.  A different termination test, which might result in fewer iterations, would be to turn the
+                    ; test into an expression whose value is 0 iff the test is satisfied, and check whether the actual value of the
+                    ; test expression is within epsilon of the value of the linearized version of the expression at min-time.
                     (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-test w) sol)) linearized-when-holders))
                     (define min-epsilon (apply min (map linearized-when-holder-epsilon active-linearized-whens)))
                     (cond [(and (pair? active-linearized-whens) (> (- target mytime) min-epsilon))
@@ -251,7 +256,7 @@
         ; existing test is OK if the *first* time is <= mytime ---- but the last must exactly equal target
         (if (and c (<= (linearized-test-first c) mytime) (= (linearized-test-last c) target))
             (linearized-test-expr c)
-            (let ([d ((linearized-when-holder-op w) (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target) 0)])
+            (let ([d (= 0 (linearize (linearized-when-holder-linearized-test w) (when-holder-id w) mytime target))])
               (hash-set! linearized-tests (when-holder-id w) (linearized-test d mytime target))
               ; (printf "updating test -- new test ~a \n" d)
               d))))

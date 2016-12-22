@@ -8,5 +8,6 @@
 
 ; default time step for numeric integration and piecewise linear approximations (in milliseconds)
 (define default-dt 10)
-; default tolerance for testing whether the time found by a linear approximation is close enough to the target time
+; default time interval for testing whether a linear approximation of a when test is close enough
+; (we keep halving the time for which the linear approximation applies until it is less than epsilon)
 (define default-epsilon 1/10)
