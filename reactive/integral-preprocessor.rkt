@@ -23,11 +23,11 @@
   (when (and (not numeric-kw) dt) (error "#:dt can only be specified in conjunction with #:numeric"))
   ; try to compute the symbolic integral and bind it to s, unless #:numeric is specified
   (let* ([v (if var var default-variable-of-integration)]
-         [d (if dt dt default-dt)]
+         [d (if dt dt default-integration-dt)]
          [s (if numeric-kw #f (symbolic-integral expr v))])
     (cond [(and symbolic-kw (not s))
            (error "#:symbolic was specified but unable to find symbolic integral")])
-    (if s (values #t v s #f) (values #f v null d))))
+    (if s (values #t v s null) (values #f v null d))))
 
 ; Function to do symbolic integration at compile time -- super simple to start with.
 ; This doesn't do any simplification of the result -- which seems fine, since it is for evaluation

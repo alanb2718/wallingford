@@ -41,11 +41,11 @@
     ((when (equal? e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...)   ; just convert (when (equal? ....) ...) to (when (= ....) ...)
      (when (= e1 e2) #:linearize #:dt dt #:epsilon epsilon e ...))
     ((when test #:linearize e ...)
-     (when test #:linearize #:dt default-dt #:epsilon default-epsilon e ...))
+     (when test #:linearize #:dt default-linearize-dt #:epsilon default-linearize-epsilon e ...))
     ((when test #:linearize #:dt dt e ...)
-     (when test #:linearize #:dt dt #:epsilon default-epsilon e ...))
+     (when test #:linearize #:dt dt #:epsilon default-linearize-epsilon e ...))
     ((when test #:linearize #:epsilon epsilon e ...)
-     (when test #:linearize #:dt default-dt #:epsilon epsilon e ...))
+     (when test #:linearize #:dt default-linearize-dt #:epsilon epsilon e ...))
     ((when test e ...)
      (send this add-when-holder (when-holder (lambda () test) (lambda () e ...) (gensym))))))
 
@@ -115,7 +115,6 @@
 ;     #:dt d -- time step (only allowed with #:numeric)
 ; Example: (integral (sin x) #:var x #:numeric #:dt 1)
 ; A Racket macro ninja would check the restrictions in the macro itself, but here the integral-preprocessor function checks them.
-; The integral-preprocessor function includes definitions of the default values for #:var and #:dt
 (require (for-syntax "integral-preprocessor.rkt"))
 (require (for-syntax syntax/parse))
 (define-syntax (integral stx)
