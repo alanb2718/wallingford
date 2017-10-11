@@ -19,7 +19,7 @@ path in .profile
 
 Follows the directions in the Rosette Guide for installing Rosette: https://emina.github.io/rosette/rosette-guide/ch_getting-started.html
 
-Download Wallingford using "git clone https://github.com/cdglabs/wallingford.git"
+Download Wallingford using "git clone https://github.com/alanborning/wallingford.git"
 
 The hand-compiled version of the quadrilateral demo in
 reactive/compiled-quadrilateral.rkt uses the Rhea implementation of the
