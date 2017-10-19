@@ -203,8 +203,8 @@
                     ; test into an expression whose value is 0 iff the test is satisfied, and check whether the actual value of the
                     ; test expression is within epsilon of the value of the linearized version of the expression at min-time.
                     (define active-linearized-whens (filter (lambda (w) (send this wally-evaluate (lookup-linearized-test w) sol)) linearized-when-holders))
-                    (define min-epsilon (apply min (map linearized-when-holder-epsilon active-linearized-whens)))
-                    (cond [(and (pair? active-linearized-whens) (> (- target mytime) min-epsilon))
+                    (define min-epsilon (if (null? active-linearized-whens) #f (apply min (map linearized-when-holder-epsilon active-linearized-whens))))
+                    (cond [(and min-epsilon (> (- target mytime) min-epsilon))
                            ; (printf "recursive call in find-time target ~a mytime ~a \n" (exact->inexact target) (exact->inexact mytime))
                            (let-values ([(ans revised-target) (find-time mytime (+ mytime (/ (- target mytime) 2)))])
                              ; (printf "about to return from recursive call in find-time mytime ~a target ~a min-time ~a ans ~a revised-target ~a \n"

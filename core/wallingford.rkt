@@ -7,9 +7,11 @@
 (provide thing% always stay required high medium low lowest sol->exact)
 
 ; symbolic names for priorities (represented as integers here)
-; this is a bit hazardous since the update method sums the priority values in
+; This is a bit hazardous since the update method sums the priority values in
 ; computing the penalty -- 11 low-priority constraints would win over a medium one
-; (since these differ by a factor of 10)
+; (since these differ by a factor of 10).
+; We could use a factor of 100 or 1000 instead -- at some point this seems likely
+; to result in numeric stability problems but I don't know when.
 (define required 10000)
 (define high 1000)
 (define medium 100)

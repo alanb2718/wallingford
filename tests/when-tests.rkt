@@ -69,6 +69,10 @@
 (define (advance-time-one-when-separate-var-soft-cn)
   (test-case
    "test advance time for a case that is too hard (should get an exception)"
+   ; The property that makes this case too hard is the use of an expression in the when test that
+   ; doesn't have a hard constraint relating it to time.  So in this test we can advance time by
+   ; any amount and find a value for m that makes the test hold.  This would still be too hard if
+   ; we eliminated the low-priority always constraint, or tried to advance to t=300 rather than t=30.
    (define one-when-tester%
      (class reactive-thing%
        (inherit milliseconds)

@@ -11,17 +11,13 @@
    "simple test of a soft always constraint"
    (define c (new thing%))
    (define-symbolic x integer?)
-   ; We used to need the following call to solve to give x a value in the current solution -
-   ; otherwise Rosette would stop without finding a solution.  The initial value for the
-   ; keep-going parameter in wally-solve in wallingford.rkt now works around this problem.
-   ; (solve (assert (equal? x 0)))
    (always (equal? x 2) #:priority low #:owner c)
    (send c solve)
    (check-equal? (send c wally-evaluate x) 2)))
 
 (define (explicit-solution-test)
   (test-case
-   "test that wally-solve is returning a solution to the required constraints"
+   "test that the solve message is returning a solution to the required constraints"
    (define c (new thing%))
    (define-symbolic x integer?)
    (always (equal? x 2) #:owner c)
@@ -30,7 +26,7 @@
 
 (define (explicit-soft-solution-test)
   (test-case
-   "test that wally-solve is returning a solution to the soft constraints"
+   "test that the solve message is returning a solution to the soft constraints"
    (define c (new thing%))
    (define-symbolic x integer?)
    (always (equal? x 2) #:priority low #:owner c)
