@@ -17,7 +17,7 @@ Download Racket if need be.  Set up a symlink in /Applications from the
 current version of Racket to Racket.  Add /Applications/Racket/bin to the
 path in .profile
 
-Follows the directions in the Rosette Guide for installing Rosette: https://emina.github.io/rosette/rosette-guide/ch_getting-started.html
+Follows the directions in the Rosette Guide for installing Rosette: https://docs.racket-lang.org/rosette-guide/ch_getting-started.html
 
 Download Wallingford using "git clone https://github.com/alanborning/wallingford.git"
 
