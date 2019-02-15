@@ -1,5 +1,7 @@
 # Wallingford
 
+Note: this project is currently inactive (the funding dried up ...)
+
 Wallingford is an experimental constraint reactive programming
 language written in Rosette.  It includes facilities for handling
 persistent constraints, hard and soft constraints, and reactive
